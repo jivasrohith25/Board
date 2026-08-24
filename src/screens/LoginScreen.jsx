@@ -212,8 +212,9 @@ VITE_FIREBASE_APP_ID=...`}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
+            className="space-y-3"
           >
-            <p className="text-warm-600 mb-4 text-sm">
+            <p className="text-warm-600 mb-1 text-sm">
               Welcome, <span className="font-bold text-primary-600">{username}</span>!
             </p>
             <motion.button
@@ -222,6 +223,13 @@ VITE_FIREBASE_APP_ID=...`}
               className="btn-primary w-full text-lg"
             >
               🎮 Start Gaming
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => navigate('/history')}
+              className="btn-secondary w-full flex items-center justify-center gap-2"
+            >
+              📜 Game History
             </motion.button>
           </motion.div>
         )}

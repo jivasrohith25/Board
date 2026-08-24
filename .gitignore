@@ -5,3 +5,5 @@ dist/
 *.db
 .DS_Store
 backend/node_modules/
+__pycache__/
+*.pyc
