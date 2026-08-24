@@ -195,101 +195,70 @@ async def get_players(game_id: str):
 # ---------------------------------------------------------------------------
 # c) POST /parse-voice
 # ---------------------------------------------------------------------------
-def _extract_numbers(text: str) -> list[int]:
-    """Extract all integers from text."""
-    return [int(m) for m in re.findall(r"-?\d+", text)]
-
-
 def _parse_voice_text(text: str, player_names: list[str]) -> dict:
-    """
-    Parse spoken score text into player-score matches.
+    matches = []
+    recognized_players = set()
+    lower_to_original = {n.lower(): n for n in player_names}
 
-    Strategy:
-    1. Try pattern-based extraction: "Name score" pairs separated by commas/and
-    2. Fall back to chunk-based fuzzy matching
-    """
-    matches: list[dict] = []
-    recognized_players: set[str] = set()
-    lower_to_original: dict[str, str] = {n.lower(): n for n in player_names}
+    # Normalize speech
+    text = text.lower()
+    text = re.sub(r"\b(scored|score|got|gets|get|points|point)\b", " ", text)
+    text = re.sub(r"[,:;]", " ", text)
 
-    # Pattern 1: "Name 15, Name2 20" or "Name got 15 points"
-    # Split on commas, semicolons, and " and "
-    chunks = re.split(r"[,;]|\band\b", text, flags=re.IGNORECASE)
+    words = text.split()
 
-    for chunk in chunks:
-        chunk = chunk.strip()
-        if not chunk:
-            continue
-
-        # Try to find a player name in this chunk
+    i = 0
+    while i < len(words):
         best_match = None
-        best_score = 0.0
-        chunk_lower = chunk.lower()
+        best_len = 0
 
         for name_lower, name_orig in lower_to_original.items():
-            # Direct substring check first
-            if name_lower in chunk_lower:
-                # Find position and length ratio as a score
-                ratio = len(name_lower) / max(len(chunk_lower), 1)
-                if ratio > best_score:
-                    best_score = ratio
-                    best_match = name_orig
-            else:
-                # Fuzzy match the chunk against the name
-                close = difflib.get_close_matches(
-                    chunk_lower, [name_lower], n=1, cutoff=0.6
-                )
-                if close:
-                    similarity = difflib.SequenceMatcher(
-                        None, chunk_lower, close[0]
-                    ).ratio()
-                    if similarity > best_score:
-                        best_score = similarity
-                        best_match = name_orig
+            name_words = name_lower.split()
+
+            if words[i:i + len(name_words)] == name_words:
+                best_match = name_orig
+                best_len = len(name_words)
+                break
 
         if best_match:
-            recognized_players.add(best_match.lower())
-            # Extract the score (nearest number in chunk)
-            numbers = _extract_numbers(chunk)
-            if numbers:
-                # If "got X points" or "scored X", use the number
-                score_val = numbers[0]
-                # Check for "minus" / "negative" patterns
-                chunk_lower_check = chunk.lower()
-                if any(
-                    neg in chunk_lower_check
-                    for neg in ["minus", "negative", "lost"]
-                ):
-                    score_val = -abs(score_val)
-                matches.append({"player": best_match, "score": score_val})
-            else:
-                # Name found but no number - record with 0
-                matches.append({"player": best_match, "score": 0})
+            j = i + best_len
 
-    # Find unrecognized names mentioned in text
-    unrecognized: list[str] = []
-    text_lower = text.lower()
+            if j < len(words):
+                try:
+                    score = int(words[j])
+
+                    if best_match.lower() not in recognized_players:
+                        matches.append({
+                            "player": best_match,
+                            "score": score
+                        })
+                        recognized_players.add(best_match.lower())
+
+                    i = j + 1
+                    continue
+                except ValueError:
+                    pass
+
+        i += 1
+
+    unrecognized = []
+
     for name_orig in player_names:
         if name_orig.lower() not in recognized_players:
-            # Check if this name (or close variant) appears in the text
             close = difflib.get_close_matches(
                 name_orig.lower(),
-                re.findall(r"[a-z]+", text_lower),
+                re.findall(r"[a-z]+", text),
                 n=1,
                 cutoff=0.6,
             )
+
             if close:
                 unrecognized.append(name_orig)
 
-    # Deduplicate matches (keep first occurrence)
-    seen: set[str] = set()
-    deduped: list[dict] = []
-    for m in matches:
-        if m["player"] not in seen:
-            seen.add(m["player"])
-            deduped.append(m)
-
-    return {"matches": deduped, "unrecognized_names": unrecognized}
+    return {
+        "matches": matches,
+        "unrecognized_names": unrecognized
+    }
 
 
 @app.post("/parse-voice")
