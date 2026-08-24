@@ -157,7 +157,6 @@ def _open_db(local_path: str) -> sqlite3.Connection:
 # Request / response models
 # ---------------------------------------------------------------------------
 class ArchiveGameRequest(BaseModel):
-    game_id: str
     players: list[str]
     rounds: list[dict[str, Any]]
     final_scores: dict[str, float]
@@ -297,7 +296,11 @@ def _parse_voice_text(text: str, player_names: list[str]) -> dict:
 async def parse_voice(req: VoiceParseRequest):
     session = sessions.get(req.game_id)
     if not session:
-        raise HTTPException(status_code=404, detail="Game session not found")
+        # Session lost (cold start / scale-to-zero) — can't parse without players
+        raise HTTPException(
+            status_code=404,
+            detail="Game session not found. Please refresh the page to re-register players.",
+        )
 
     player_names = session.get("players", [])
     if not player_names:

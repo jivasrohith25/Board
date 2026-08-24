@@ -12,7 +12,7 @@ function loadDraft() {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw)
   } catch {}
-  return { players: [], roundLength: 20 }
+  return { players: [], roundLength: 5 }
 }
 
 function saveDraft(data) {

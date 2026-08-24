@@ -111,6 +111,19 @@ export function PointEntryScreen() {
   const parseVoice = async (text) => {
     try {
       const token = await user.getIdToken()
+
+      // Re-register session before voice call (survives Cloud Run cold starts)
+      try {
+        await fetch(`${API_BASE}/sessions/${gameId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ players: game.players }),
+        })
+      } catch { /* non-critical */ }
+
       const res = await fetch(`${API_BASE}/parse-voice`, {
         method: 'POST',
         headers: {
@@ -119,7 +132,11 @@ export function PointEntryScreen() {
         },
         body: JSON.stringify({ game_id: gameId, text }),
       })
-      if (!res.ok) throw new Error('Parse failed')
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        const msg = errBody.detail || errBody.error || `Server error ${res.status}`
+        throw new Error(msg)
+      }
       const data = await res.json()
 
       // Pre-fill score inputs with voice matches
@@ -139,7 +156,7 @@ export function PointEntryScreen() {
       }
     } catch (err) {
       console.error('Voice parse error:', err)
-      showError('Failed to parse voice input')
+      showError(`Voice input failed: ${err.message}`)
     }
   }
 
@@ -317,13 +334,17 @@ export function PointEntryScreen() {
           winner: getSortedPlayers()[0]?.name || '',
         }),
       })
-      if (!response.ok) throw new Error('Archive failed')
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}))
+        const msg = errBody.detail || errBody.error || `Server error ${response.status}`
+        throw new Error(msg)
+      }
       const data = await response.json()
       setArchivedGameId(data.id || gameId)
       return data.id || gameId
     } catch (err) {
       console.error('Archive failed:', err)
-      showError('Failed to archive game')
+      showError(`Archive failed: ${err.message}`)
       return null
     } finally {
       setArchiving(false)
