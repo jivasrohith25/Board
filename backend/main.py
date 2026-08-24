@@ -63,11 +63,18 @@ CREATE TABLE IF NOT EXISTS games (
 # ---------------------------------------------------------------------------
 app = FastAPI(title="Board Game Scorekeeper API")
 
-# CORS
-allowed_origin = os.environ.get("ALLOWED_ORIGIN", "*")
+# CORS — support both local dev and production
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173,http://localhost:3000",
+    ).split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[allowed_origin],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -162,6 +169,153 @@ class ArchiveGameRequest(BaseModel):
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# b) GET /players?game_id=...
+# ---------------------------------------------------------------------------
+@app.get("/players")
+async def get_players(
+    game_id: str,
+    user: dict = Depends(authenticate),
+):
+    if not game_id:
+        raise HTTPException(status_code=400, detail="game_id query param required")
+
+    db = firestore.client()
+    game_doc = db.collection("games").document(game_id).get()
+    if not game_doc.exists:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    game_data = game_doc.to_dict()
+    if game_data.get("createdBy") != user["uid"]:
+        raise HTTPException(status_code=403, detail="Not your game")
+
+    return {
+        "game_id": game_id,
+        "players": game_data.get("players", []),
+        "currentRound": game_data.get("currentRound", 1),
+    }
+
+
+# ---------------------------------------------------------------------------
+# c) POST /parse-voice
+# ---------------------------------------------------------------------------
+class ParseVoiceRequest(BaseModel):
+    text: str
+    game_id: str
+
+
+def _number_from_text(text: str) -> int | None:
+    """Extract the first integer from a text fragment."""
+    m = re.search(r"(-?\d+)", text)
+    if m:
+        return int(m.group(1))
+    return None
+
+
+# Regex verbs that indicate someone scored
+_VERB_RE = re.compile(
+    r"(?:gets?|got|scored?|gives?|give|has|have|earns?|earned|makes?|made|total(?:s|ed)?)",
+    re.IGNORECASE,
+)
+
+
+def _parse_voice_impl(raw_text: str, players: list[str]) -> dict:
+    """
+    Match spoken player names against the text, extract the nearest
+    following number as their score.
+
+    Returns: { raw_text, matched: [{player, score}], unrecognized_names, errors }
+    """
+    matched = []
+    errors = []
+    unrecognized = []
+    lower_text = raw_text.lower()
+
+    # Build (name_lower, original_name) pairs sorted longest-first
+    player_pairs = sorted(
+        [(p.lower(), p) for p in players],
+        key=lambda x: len(x[0]),
+        reverse=True,
+    )
+
+    # Track which character positions are consumed by player matches
+    consumed_spans: list[tuple[int, int]] = []
+
+    for name_lower, name_orig in player_pairs:
+        idx = lower_text.find(name_lower)
+        if idx == -1:
+            continue
+
+        end = idx + len(name_lower)
+        consumed_spans.append((idx, end))
+
+        # Search for a number in the text AFTER the player name
+        segment_after = raw_text[end:]
+        score = _number_from_text(segment_after)
+
+        if score is not None:
+            matched.append({"player": name_orig, "score": score})
+        else:
+            errors.append(f"Found '{name_orig}' but no score after it")
+
+    # Find name-like words (capitalized or near scoring verbs) not matching any player
+    # Check for capitalized words that look like names
+    for word_match in re.finditer(r"\b([A-Z][a-z]{1,19})\b", raw_text):
+        word = word_match.group(1)
+        word_lower = word.lower()
+        start, end = word_match.span()
+
+        # Skip if this span overlaps with a consumed player name
+        overlaps = any(
+            start < ce and end > cs for cs, ce in consumed_spans
+        )
+        if overlaps:
+            continue
+
+        # Skip if it's a known player
+        if any(word_lower == p.lower() for p, _ in player_pairs):
+            continue
+
+        # Check if followed by a scoring verb or a number
+        after = raw_text[end:]
+        if _VERB_RE.search(after) or _number_from_text(after) is not None:
+            unrecognized.append(word)
+
+    return {
+        "raw_text": raw_text,
+        "matched": matched,
+        "unrecognized_names": unrecognized,
+        "errors": errors,
+    }
+
+
+@app.post("/parse-voice")
+async def parse_voice(
+    req: ParseVoiceRequest,
+    user: dict = Depends(authenticate),
+):
+    if not req.text or not req.text.strip():
+        raise HTTPException(status_code=400, detail="text is required")
+    if not req.game_id:
+        raise HTTPException(status_code=400, detail="game_id is required")
+
+    # Fetch real player list from Firestore
+    db = firestore.client()
+    game_doc = db.collection("games").document(req.game_id).get()
+    if not game_doc.exists:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    game_data = game_doc.to_dict()
+    if game_data.get("createdBy") != user["uid"]:
+        raise HTTPException(status_code=403, detail="Not your game")
+
+    players = game_data.get("players", [])
+    if not players:
+        raise HTTPException(status_code=400, detail="Game has no players")
+
+    return _parse_voice_impl(req.text.strip(), players)
 
 
 # ---------------------------------------------------------------------------

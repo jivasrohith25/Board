@@ -6,6 +6,7 @@ import { db, useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { Modal } from '../components/Modal'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
+import { useVoiceInput } from '../hooks/useVoiceInput'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
@@ -31,6 +32,108 @@ export function PointEntryScreen() {
   const undoTimerRef = useRef(null)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const pendingQueue = useRef([])
+  const [isVoiceActive, setIsVoiceActive] = useState(false)
+  const [pendingScores, setPendingScores] = useState({})
+  const [unrecognizedNames, setUnrecognizedNames] = useState([])
+
+  const handleVoiceTranscript = useCallback(async (rawText) => {
+    setIsVoiceActive(false)
+    if (!rawText || !user) return
+
+    try {
+      const token = await user.getIdToken()
+      const res = await fetch(`${API_BASE}/parse-voice`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text: rawText, game_id: gameId }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `Server error ${res.status}`)
+      }
+
+      const data = await res.json()
+
+      // Pre-fill matched scores in PENDING state
+      if (data.matched && data.matched.length > 0) {
+        const newPending = {}
+        data.matched.forEach(m => {
+          newPending[m.player] = m.score
+        })
+        setPendingScores(prev => ({ ...prev, ...newPending }))
+        showInfo(`Voice matched ${data.matched.length} player(s) — review below`)
+      } else {
+        showError('No player names recognized in speech')
+      }
+
+      // Show unrecognized names warning
+      if (data.unrecognized_names && data.unrecognized_names.length > 0) {
+        setUnrecognizedNames(data.unrecognized_names)
+      } else {
+        setUnrecognizedNames([])
+      }
+
+      // Show errors
+      if (data.errors && data.errors.length > 0) {
+        data.errors.forEach(e => showError(e))
+      }
+    } catch (err) {
+      showError(`Voice parse failed: ${err.message}`)
+    }
+  }, [user, gameId, showInfo, showError])
+
+  const handleVoiceError = useCallback((err) => {
+    setIsVoiceActive(false)
+    if (err !== 'no-speech') {
+      showError(`Voice error: ${err}`)
+    }
+  }, [showError])
+
+  const { isListening, isSupported, transcript, startListening, stopListening } = useVoiceInput({
+    onResult: handleVoiceTranscript,
+    onError: handleVoiceError,
+  })
+
+  const toggleGlobalVoice = () => {
+    if (isListening) {
+      stopListening()
+      setIsVoiceActive(false)
+    } else {
+      setIsVoiceActive(true)
+      startListening()
+    }
+  }
+
+  // Accept a pending voice score into the real scores
+  const acceptPendingScore = (player) => {
+    const val = pendingScores[player]
+    if (val !== undefined) {
+      handleScoreChange(player, val.toString())
+      setPendingScores(prev => {
+        const next = { ...prev }
+        delete next[player]
+        return next
+      })
+    }
+  }
+
+  // Accept all pending scores
+  const acceptAllPending = () => {
+    Object.entries(pendingScores).forEach(([player, score]) => {
+      handleScoreChange(player, score.toString())
+    })
+    setPendingScores({})
+  }
+
+  // Dismiss pending scores
+  const dismissPending = () => {
+    setPendingScores({})
+    setUnrecognizedNames([])
+  }
 
   useEffect(() => {
     const on = () => setIsOnline(true)
@@ -336,12 +439,142 @@ export function PointEntryScreen() {
             </div>
           </div>
 
+          {/* Voice Input Bar */}
+          {isSupported && (
+            <div className="flex items-center gap-3 mb-4">
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={toggleGlobalVoice}
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  isListening
+                    ? 'bg-danger-500 text-white shadow-lg shadow-danger-500/30'
+                    : 'bg-warm-100 text-warm-500 hover:bg-warm-200 hover:text-warm-700'
+                }`}
+                title={isListening ? 'Stop listening' : 'Speak all scores'}
+              >
+                {isListening ? (
+                  <svg className="w-6 h-6 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                  </svg>
+                )}
+              </motion.button>
+              <div className="flex-1">
+                <p className="text-sm text-warm-500">
+                  {isListening ? (
+                    <span className="text-danger-600 font-medium">Listening… speak player names and scores</span>
+                  ) : (
+                    'Tap mic, then say names + scores (e.g. "Alice 25, Bob 30")'
+                  )}
+                </p>
+                {isListening && transcript && (
+                  <p className="text-xs text-warm-400 italic mt-0.5">"{transcript}"</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Pending Voice Scores */}
+          <AnimatePresence>
+            {Object.keys(pendingScores).length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-4"
+              >
+                <div className="card p-3 border-primary-200 bg-primary-50/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-primary-700 uppercase tracking-wider">
+                      Voice Matched — Review
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={acceptAllPending}
+                        className="text-xs font-medium text-primary-600 hover:text-primary-800 underline"
+                      >
+                        Accept All
+                      </button>
+                      <button
+                        onClick={dismissPending}
+                        className="text-xs font-medium text-warm-400 hover:text-warm-600 underline"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(pendingScores).map(([player, score]) => (
+                      <motion.button
+                        key={player}
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => acceptPendingScore(player)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-100 border border-primary-300 text-primary-800 text-sm font-medium hover:bg-primary-200 transition-colors"
+                        title={`Click to accept ${score} for ${player}`}
+                      >
+                        <span>{player}</span>
+                        <span className="font-mono font-bold">{score}</span>
+                        <svg className="w-3 h-3 text-primary-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </motion.button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-primary-600 mt-2">
+                    Click a chip to accept, or "Accept All"
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Unrecognized Names Warning */}
+          <AnimatePresence>
+            {unrecognizedNames.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-4"
+              >
+                <div className="card p-3 border-yellow-200 bg-yellow-50">
+                  <p className="text-xs font-bold text-yellow-700 uppercase tracking-wider mb-1">
+                    ⚠ Unrecognized Names
+                  </p>
+                  <p className="text-sm text-yellow-800">
+                    Heard these names but couldn't match them to players:{' '}
+                    <span className="font-semibold">
+                      {unrecognizedNames.join(', ')}
+                    </span>
+                  </p>
+                  <button
+                    onClick={() => setUnrecognizedNames([])}
+                    className="text-xs text-yellow-600 hover:text-yellow-800 underline mt-1"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Score Inputs */}
           <div className="space-y-3 mb-2">
             {game.players.map(player => (
               <div key={player} className="card p-4">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <label className="flex-1 font-medium text-warm-900">{player}</label>
+                  {pendingScores[player] !== undefined && (
+                    <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium animate-pulse">
+                      PENDING
+                    </span>
+                  )}
                   <input
                     type="number"
                     value={scores[player] ?? ''}
