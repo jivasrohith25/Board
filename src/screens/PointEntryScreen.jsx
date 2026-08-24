@@ -28,11 +28,7 @@ export function PointEntryScreen() {
   const [undoAvailable, setUndoAvailable] = useState(false)
   const [archiving, setArchiving] = useState(false)
   const [archivedGameId, setArchivedGameId] = useState(null)
-  const [listening, setListening] = useState(false)
-  const [voiceMatches, setVoiceMatches] = useState([])
-  const [unrecognizedNames, setUnrecognizedNames] = useState([])
   const undoTimerRef = useRef(null)
-  const recognitionRef = useRef(null)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const pendingQueue = useRef([])
 
@@ -55,110 +51,9 @@ export function PointEntryScreen() {
     }
   }, [isOnline])
 
-  // Check for Web Speech API support
-  const speechSupported = typeof window !== 'undefined' && (
-    'SpeechRecognition' in window || 'webkitSpeechRecognition' in window
-  )
-
   useEffect(() => {
     loadGame()
-    // Cleanup speech recognition on unmount
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort()
-      }
-    }
   }, [gameId])
-
-  const startVoiceInput = () => {
-    if (!speechSupported || listening) return
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    const recognition = new SpeechRecognition()
-    recognitionRef.current = recognition
-
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.lang = 'en-US'
-
-    recognition.onstart = () => {
-      setListening(true)
-      setVoiceMatches([])
-      setUnrecognizedNames([])
-    }
-
-    recognition.onresult = async (event) => {
-      const transcript = event.results[0][0].transcript
-      await parseVoice(transcript)
-    }
-
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error)
-      setListening(false)
-      if (event.error !== 'no-speech') {
-        showError('Voice input failed. Please try again.')
-      }
-    }
-
-    recognition.onend = () => {
-      setListening(false)
-      recognitionRef.current = null
-    }
-
-    recognition.start()
-  }
-
-  const parseVoice = async (text) => {
-    try {
-      const token = await user.getIdToken()
-
-      // Re-register session before voice call (survives Cloud Run cold starts)
-      try {
-        await fetch(`${API_BASE}/sessions/${gameId}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ players: game.players }),
-        })
-      } catch { /* non-critical */ }
-
-      const res = await fetch(`${API_BASE}/parse-voice`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ game_id: gameId, text }),
-      })
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}))
-        const msg = errBody.detail || errBody.error || `Server error ${res.status}`
-        throw new Error(msg)
-      }
-      const data = await res.json()
-
-      // Pre-fill score inputs with voice matches
-      if (data.matches && data.matches.length > 0) {
-        const newScores = { ...scores }
-        data.matches.forEach(m => {
-          if (game.players.includes(m.player)) {
-            newScores[m.player] = m.score
-          }
-        })
-        setScores(newScores)
-        setVoiceMatches(data.matches)
-      }
-
-      if (data.unrecognized_names && data.unrecognized_names.length > 0) {
-        setUnrecognizedNames(data.unrecognized_names)
-      }
-    } catch (err) {
-      console.error('Voice parse error:', err)
-      showError(`Voice input failed: ${err.message}`)
-    }
-  }
 
   const loadGame = async () => {
     try {
@@ -195,22 +90,6 @@ export function PointEntryScreen() {
       setScores(initScores)
       setCurrentRound(rounds.length + 1)
       setLoading(false)
-
-      // Register session with backend for voice parsing
-      try {
-        const token = await user.getIdToken()
-        await fetch(`${API_BASE}/sessions/${gameId}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ players: gameData.players }),
-        })
-      } catch (err) {
-        // Non-critical, voice parsing just won't work
-        console.warn('Failed to register session:', err)
-      }
     } catch (err) {
       console.error('Failed to load game:', err)
       showError('Failed to load game')
@@ -454,23 +333,6 @@ export function PointEntryScreen() {
                   Offline
                 </span>
               )}
-              {speechSupported && (
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={startVoiceInput}
-                  disabled={listening}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                    listening
-                      ? 'bg-danger-500 text-white animate-pulse'
-                      : 'bg-warm-200 text-warm-700 hover:bg-warm-300'
-                  }`}
-                  title={listening ? 'Listening...' : 'Voice input'}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                  </svg>
-                </motion.button>
-              )}
             </div>
           </div>
 
@@ -485,38 +347,12 @@ export function PointEntryScreen() {
                     value={scores[player] ?? ''}
                     onChange={(e) => handleScoreChange(player, e.target.value)}
                     placeholder="0"
-                    className={`input-field w-24 text-center text-lg font-mono font-bold ${
-                      voiceMatches.some(m => m.player === player) ? 'border-primary-400 bg-primary-50' : ''
-                    }`}
+                    className="input-field w-24 text-center text-lg font-mono font-bold"
                   />
                 </div>
               </div>
             ))}
           </div>
-
-          {/* Voice Feedback */}
-          <AnimatePresence>
-            {unrecognizedNames.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mb-3 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-xl text-xs text-yellow-700"
-              >
-                Heard <span className="font-bold">{unrecognizedNames.join(', ')}</span> — not in this game, ignored.
-              </motion.div>
-            )}
-            {voiceMatches.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mb-3 px-3 py-2 bg-primary-50 border border-primary-200 rounded-xl text-xs text-primary-700"
-              >
-                Voice filled: {voiceMatches.map(m => `${m.player} → ${m.score}`).join(', ')}
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           {/* Submit Round */}
           <motion.button

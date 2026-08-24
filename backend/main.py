@@ -1,11 +1,9 @@
 """
 Board Game Scorekeeper Backend
-FastAPI app with Firebase auth, Cloud Storage SQLite archiving, and voice parsing.
+FastAPI app with Firebase auth and Cloud Storage SQLite archiving.
 """
 
 import asyncio
-import difflib
-import io
 import json
 import os
 import re
@@ -33,11 +31,6 @@ if not firebase_admin._apps:
 # ---------------------------------------------------------------------------
 gcs_client = gcs_storage.Client()
 BUCKET_NAME = os.environ.get("GCS_BUCKET", "bgsk-game-history")
-
-# ---------------------------------------------------------------------------
-# In-memory session store
-# ---------------------------------------------------------------------------
-sessions: dict[str, dict] = {}
 
 # ---------------------------------------------------------------------------
 # Per-username write locks
@@ -163,138 +156,12 @@ class ArchiveGameRequest(BaseModel):
     winner: str
 
 
-class VoiceParseRequest(BaseModel):
-    game_id: str
-    text: str
-
-
 # ---------------------------------------------------------------------------
 # a) GET /health
 # ---------------------------------------------------------------------------
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
-
-
-# ---------------------------------------------------------------------------
-# b) GET /players/{game_id}
-# ---------------------------------------------------------------------------
-@app.get("/players/{game_id}")
-async def get_players(game_id: str):
-    session = sessions.get(game_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Game session not found")
-
-    return {
-        "players": session.get("players", []),
-        "scores": session.get("scores", {}),
-        "current_round": session.get("current_round", 0),
-    }
-
-
-# ---------------------------------------------------------------------------
-# c) POST /parse-voice
-# ---------------------------------------------------------------------------
-def _parse_voice_text(text: str, player_names: list[str]) -> dict:
-    matches = []
-    recognized_players = set()
-    lower_to_original = {n.lower(): n for n in player_names}
-
-    # Normalize speech
-    text = text.lower()
-    text = re.sub(r"\b(scored|score|got|gets|get|points|point)\b", " ", text)
-    text = re.sub(r"[,:;]", " ", text)
-
-    words = text.split()
-
-    i = 0
-    while i < len(words):
-        best_match = None
-        best_len = 0
-
-        for name_lower, name_orig in lower_to_original.items():
-            name_words = name_lower.split()
-
-            if words[i:i + len(name_words)] == name_words:
-                best_match = name_orig
-                best_len = len(name_words)
-                break
-
-        if best_match:
-            j = i + best_len
-
-            if j < len(words):
-                try:
-                    score = int(words[j])
-
-                    if best_match.lower() not in recognized_players:
-                        matches.append({
-                            "player": best_match,
-                            "score": score
-                        })
-                        recognized_players.add(best_match.lower())
-
-                    i = j + 1
-                    continue
-                except ValueError:
-                    pass
-
-        i += 1
-
-    unrecognized = []
-
-    for name_orig in player_names:
-        if name_orig.lower() not in recognized_players:
-            close = difflib.get_close_matches(
-                name_orig.lower(),
-                re.findall(r"[a-z]+", text),
-                n=1,
-                cutoff=0.6,
-            )
-
-            if close:
-                unrecognized.append(name_orig)
-
-    return {
-        "matches": matches,
-        "unrecognized_names": unrecognized
-    }
-
-
-@app.post("/parse-voice")
-async def parse_voice(req: VoiceParseRequest):
-    session = sessions.get(req.game_id)
-    if not session:
-        # Session lost (cold start / scale-to-zero) — can't parse without players
-        raise HTTPException(
-            status_code=404,
-            detail="Game session not found. Please refresh the page to re-register players.",
-        )
-
-    player_names = session.get("players", [])
-    if not player_names:
-        raise HTTPException(status_code=400, detail="No players in session")
-
-    result = _parse_voice_text(req.text, player_names)
-    return result
-
-
-# ---------------------------------------------------------------------------
-# Session registration (called by frontend when game starts)
-# ---------------------------------------------------------------------------
-class RegisterSessionRequest(BaseModel):
-    players: list[str]
-
-
-@app.post("/sessions/{game_id}")
-async def register_session(game_id: str, req: RegisterSessionRequest):
-    """Register a game session's player list for voice parsing."""
-    sessions[game_id] = {
-        "players": req.players,
-        "scores": {p: 0 for p in req.players},
-        "current_round": 1,
-    }
-    return {"success": True}
 
 
 # ---------------------------------------------------------------------------
