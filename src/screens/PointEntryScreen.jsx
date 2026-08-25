@@ -39,6 +39,7 @@ export function PointEntryScreen() {
   const [isVoiceActive, setIsVoiceActive] = useState(false)
   const [coachComment, setCoachComment] = useState('')
   const [coachEmotion, setCoachEmotion] = useState('default')
+  const [coachTyping, setCoachTyping] = useState(false)
   const [pendingScores, setPendingScores] = useState({})
   const [unrecognizedNames, setUnrecognizedNames] = useState([])
   const [popupVisible, setPopupVisible] = useState(false)
@@ -73,7 +74,6 @@ export function PointEntryScreen() {
         })
         setPendingScores(prev => ({ ...prev, ...newPending }))
         hasPopup = true
-        showInfo(`Voice matched ${data.matched.length} player(s) — review below`)
       } else {
         showError('No player names recognized in speech')
       }
@@ -144,15 +144,7 @@ export function PointEntryScreen() {
     setPopupVisible(false)
   }
 
-  useEffect(() => {
-    if (!popupVisible) return
-    const timer = setTimeout(() => {
-      setPendingScores({})
-      setUnrecognizedNames([])
-      setPopupVisible(false)
-    }, 3000)
-    return () => clearTimeout(timer)
-  }, [popupVisible])
+  // Voice popup stays until user dismisses (no auto-fade)
 
   useEffect(() => {
     const on = () => setIsOnline(true)
@@ -292,16 +284,16 @@ export function PointEntryScreen() {
       }
     }
 
-    await writeRound()
-    setSubmitting(false)
+    const token = await user.getIdToken()
 
-    // Fire-and-forget coach comment
+    // Fire coach-comment in PARALLEL with round write (not after awaiting it)
     const newTotalsForCoach = { ...newTotals }
-    fetch(`${API_BASE}/coach-comment`, {
+    setCoachTyping(true)
+    const coachPromise = fetch(`${API_BASE}/coach-comment`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${await user.getIdToken()}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         game_id: gameId,
@@ -317,8 +309,17 @@ export function PointEntryScreen() {
           setCoachComment(data.comment)
           setCoachEmotion(data.emotion || 'default')
         }
+        setCoachTyping(false)
       })
-      .catch(() => {})
+      .catch(() => {
+        setCoachTyping(false)
+      })
+
+    await writeRound()
+    setSubmitting(false)
+
+    // Ensure typing indicator is off if coach finishes after round write
+    coachPromise.catch(() => {})
 
     setUndoAvailable(true)
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
@@ -639,26 +640,50 @@ export function PointEntryScreen() {
             )}
           </AnimatePresence>
 
-          {/* Score Inputs */}
-          <div className="space-y-2 mb-3">
-            {game.players.map((player, idx) => (
-              <div key={player} className="card p-3.5 flex items-center gap-3">
-                <div className="w-1 h-8 rounded-full bg-warm-200 flex-shrink-0" />
-                <label className="flex-1 font-medium text-warm-800 text-sm">{player}</label>
-                {pendingScores[player] !== undefined && (
-                  <span className="text-[10px] bg-primary-100 text-primary-600 px-2 py-0.5 rounded-full font-semibold">
-                    PENDING
-                  </span>
-                )}
-                <input
-                  type="number"
-                  value={scores[player] ?? ''}
-                  onChange={(e) => handleScoreChange(player, e.target.value)}
-                  placeholder="0"
-                  className="input-field w-24 text-center text-lg font-mono font-bold py-2"
-                />
-              </div>
-            ))}
+          {/* Score Inputs + Coach (adjacent on desktop, stacked on mobile) */}
+          <div className="space-y-2 mb-3 lg:flex lg:items-start lg:gap-6">
+            <div className="lg:flex-1 min-w-0">
+              {game.players.map((player, idx) => (
+                <div key={player} className="card p-3.5 flex items-center gap-3">
+                  <div className="w-1 h-8 rounded-full bg-warm-200 flex-shrink-0" />
+                  <label className="flex-1 font-medium text-warm-800 text-sm">{player}</label>
+                  {pendingScores[player] !== undefined && (
+                    <span className="text-[10px] bg-primary-100 text-primary-600 px-2 py-0.5 rounded-full font-semibold">
+                      PENDING
+                    </span>
+                  )}
+                  <input
+                    type="number"
+                    value={scores[player] ?? ''}
+                    onChange={(e) => handleScoreChange(player, e.target.value)}
+                    placeholder="0"
+                    className="input-field w-24 text-center text-lg font-mono font-bold py-2"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Coach — desktop: right of inputs; mobile: stacked below */}
+            <div className="lg:w-48 lg:flex-none lg:sticky lg:top-20 lg:self-start hidden lg:block">
+              <GameCoach
+                comment={coachComment}
+                emotion={coachEmotion}
+                fadeAfterMs={5000}
+                permanent
+                isTyping={coachTyping}
+              />
+            </div>
+          </div>
+
+          {/* Mobile coach — only on small screens */}
+          <div className="lg:hidden mt-4">
+            <GameCoach
+              comment={coachComment}
+              emotion={coachEmotion}
+              fadeAfterMs={5000}
+              permanent
+              isTyping={coachTyping}
+            />
           </div>
 
           {/* Submit Round */}
@@ -749,11 +774,7 @@ export function PointEntryScreen() {
         cancelText="Keep Playing"
       />
 
-      {/* Coach — always visible */}
-      <div className="fixed bottom-4 left-4 z-30">
-        <GameCoach comment={coachComment} emotion={coachEmotion} fadeAfterMs={5000} permanent />
-      </div>
-
+      
       {/* End Game Modal */}
       <Modal
         isOpen={showEndModal}

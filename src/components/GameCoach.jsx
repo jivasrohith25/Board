@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, memo, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import coachDefault from '/coach/default.png'
@@ -15,6 +15,17 @@ const EMOTION_IMAGES = {
   sad: coachSad,
 }
 
+// Preload all images at module load — eliminates network flicker on emotion swap
+const PRELOADED_IMAGES = useMemo(() => {
+  const imgs = {}
+  Object.values(EMOTION_IMAGES).forEach(src => {
+    const img = new Image()
+    img.src = src
+    imgs[src] = img
+  })
+  return imgs
+}, [])
+
 const BUBBLE_STYLES = {
   default: { bg: '#faf5f0', border: '#ebb7a3', text: '#683328' },
   happy: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af' },
@@ -28,15 +39,22 @@ const BUBBLE_STYLES = {
  * permanent=true: character always visible, bubble fades in/out on comments
  * permanent=false: entire block fades in/out (results screen mode)
  */
-export function GameCoach({ comment, emotion = 'default', fadeAfterMs = 5000, permanent = false }) {
+function GameCoachInner({ comment, emotion = 'default', fadeAfterMs = 5000, permanent = false, isTyping = false }) {
   const [bubbleVisible, setBubbleVisible] = useState(false)
   const [currentComment, setCurrentComment] = useState('')
   const [currentEmotion, setCurrentEmotion] = useState(emotion)
   const timerRef = useRef(null)
 
   useEffect(() => {
-    if (!comment) {
+    if (!comment && !isTyping) {
       setBubbleVisible(false)
+      return
+    }
+    // When typing, show a thinking bubble immediately
+    if (isTyping) {
+      setCurrentComment('…')
+      setCurrentEmotion(emotion)
+      setBubbleVisible(true)
       return
     }
     setCurrentComment(comment)
@@ -49,7 +67,7 @@ export function GameCoach({ comment, emotion = 'default', fadeAfterMs = 5000, pe
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [comment, emotion, fadeAfterMs])
+  }, [comment, emotion, fadeAfterMs, isTyping])
 
   // Reset to default emotion when bubble fades
   useEffect(() => {
@@ -83,6 +101,7 @@ export function GameCoach({ comment, emotion = 'default', fadeAfterMs = 5000, pe
     </motion.div>
   )
 
+  // Character image — key ONLY on emotion, not comment, so text updates don't remount image
   const Character = ({ size = 'w-[110px] h-[110px]' }) => (
     <AnimatePresence mode="wait">
       <motion.img
@@ -128,3 +147,6 @@ export function GameCoach({ comment, emotion = 'default', fadeAfterMs = 5000, pe
     </AnimatePresence>
   )
 }
+
+// Memoized export — only re-renders when props actually change
+export const GameCoach = memo(GameCoachInner)

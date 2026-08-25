@@ -52,6 +52,7 @@ export function ResultsScreen() {
   const [rematching, setRematching] = useState(false)
   const [coachComment, setCoachComment] = useState('')
   const [coachEmotion, setCoachEmotion] = useState('default')
+  const [coachTyping, setCoachTyping] = useState(false)
   const [playerAvatars, setPlayerAvatars] = useState({})
 
   useEffect(() => {
@@ -79,6 +80,7 @@ export function ResultsScreen() {
 
       const winner = sortedPlayers[0]?.name || ''
       if (winner) {
+        setCoachTyping(true)
         user.getIdToken().then(token => {
           fetch(`${API_BASE}/coach-finale`, {
             method: 'POST',
@@ -99,9 +101,14 @@ export function ResultsScreen() {
                 setCoachComment(data.comment)
                 setCoachEmotion(data.emotion || 'default')
               }
+              setCoachTyping(false)
             })
-            .catch(() => {})
-        }).catch(() => {})
+            .catch(() => {
+              setCoachTyping(false)
+            })
+        }).catch(() => {
+          setCoachTyping(false)
+        })
       }
 
       return () => { clearTimeout(t1); clearTimeout(t2) }
@@ -349,14 +356,14 @@ export function ResultsScreen() {
 
       <div className="relative z-10 px-4 py-8 max-w-lg mx-auto">
         {/* Mr. Slow Coach */}
-        {coachComment && (
+        {(coachComment || coachTyping) && (
           <motion.div
             className="flex justify-center mb-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.2 }}
           >
-            <GameCoach comment={coachComment} emotion={coachEmotion} fadeAfterMs={10000} />
+            <GameCoach comment={coachComment} emotion={coachEmotion} fadeAfterMs={10000} permanent isTyping={coachTyping} />
           </motion.div>
         )}
 

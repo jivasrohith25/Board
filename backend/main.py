@@ -42,11 +42,15 @@ try:
 
     GCP_PROJECT = os.environ.get("GCP_PROJECT_ID", os.environ.get("GOOGLE_CLOUD_PROJECT", ""))
     vertexai.init(project=GCP_PROJECT, location="us-central1")
-    coach_model = GenerativeModel("gemini-2.0-flash")
+    # Use flash-lite for lower latency; cap output at 40 tokens
+    coach_model = GenerativeModel("gemini-2.0-flash-lite")
     COACH_ENABLED = bool(GCP_PROJECT)
 except Exception:
     COACH_ENABLED = False
     coach_model = None
+
+# Coach generation config — low max_output_tokens = lower latency
+COACH_GEN_CONFIG = {"temperature": 0.9, "max_output_tokens": 40, "candidate_count": 1}
 
 # ---------------------------------------------------------------------------
 # Per-username write locks
@@ -572,66 +576,56 @@ async def coach_comment(
 
     game_data = game_doc.to_dict()
 
-    # Lock in favorite player (random pick once, persists for game)
+    # Read favorite/teased FIRST (before prompt) — don't block on writes
     favorite = game_data.get("favorite_player")
     if not favorite:
         players = list(req.totals.keys())
         favorite = players[req.round_number % len(players)]
+        # Fire-and-forget: don't await this write
         game_ref.update({"favorite_player": favorite})
 
     teased = game_data.get("teased_players", [])
     last_place = min(req.totals, key=req.totals.get) if req.totals else ""
 
-    prompt = f"""You are Mr. Slow — the most dramatic, over-the-top, hilariously biased board game coach ever.
+    # Backend determines emotion (single source of truth)
+    fav_score = req.totals.get(favorite, 0)
+    max_score = max(req.totals.values()) if req.totals else 0
+    is_fav_winning = fav_score == max_score and fav_score > 0
+    is_fav_last = fav_score > 0 and fav_score == min(req.totals.values())
+    was_teased_now_doing_well = last_place in teased and last_place != "" and req.totals.get(last_place, 0) > min(req.totals.values())
 
-YOUR PERSONALITY:
-- You have exactly ONE favorite player: {favorite}. You are OBSESSED with them. You call them "my champ", "my legend", "the chosen one". You hyp them up like they just won the Olympics even if they scored 2 points.
-- You ROAST whoever is in last place ({last_place}) with affectionate trash talk. Think sitcom dad energy — never cruel, always hilarious. Use silly nicknames.
-- If a previously-teased player ({json.dumps(teased)}) is now doing well, you are SHOCKED. "WAIT WHAT? {teased[0] if teased else 'someone'} is WINNING?!" energy.
-- You speak like an excitable sports commentator mixed with a hype man. Use emoji sparingly but effectively. Exclamation marks are your best friend.
+    if is_fav_winning:
+        backend_emotion = "happy"
+    elif is_fav_last:
+        backend_emotion = "sad"
+    elif was_teased_now_doing_well:
+        backend_emotion = "laugh"
+    else:
+        backend_emotion = "default"
 
-THIS ROUND ({req.round_number}):
-- This round's scores: {json.dumps(req.scores)}
-- Running totals: {json.dumps(req.totals)}
+    prompt = f"""You are Mr. Slow — dramatic, biased board game coach. Favorite: {favorite}. Last: {last_place}. Teased: {json.dumps(teased)}. Round {req.round_number}: scores={json.dumps(req.scores)}, totals={json.dumps(req.totals)}. Under 25 words. JSON only: {{"comment": "...", "emotion": "{backend_emotion}"}}"""
 
-RULES:
-- Keep it under 25 words. Punchy. Snappy.
-- Never actually mean — you love ALL these players, you just show it chaotically.
-- React to dramatic score swings, comebacks, or ties with extra excitement.
-
-You MUST respond in this EXACT JSON format only, nothing else:
-{{"comment": "your hilarious comment here", "emotion": "one of: happy, laugh, shocked, sad, default"}}
-
-EMOTION GUIDE:
-- "happy" → your favorite player just crushed it or is winning
-- "laugh" → you're roasting the last place player or something funny happened
-- "shocked" → a previously bad player is suddenly doing well
-- "sad" → your favorite player is struggling or in last place
-- "default" → normal round, nothing dramatic"""
-
-    comment = "Great round, everyone! Keep rolling! 🎲"
-    emotion = "default"
+    comment = "Great round, everyone! 🎲"
+    emotion = backend_emotion
 
     try:
         response = coach_model.generate_content(
             prompt,
-            generation_config={"temperature": 0.9, "max_output_tokens": 150},
+            generation_config=COACH_GEN_CONFIG,
         )
         raw = response.text.strip()
-        # Try to extract JSON from the response
         json_match = re.search(r'\{[^}]+\}', raw)
         if json_match:
             parsed = json.loads(json_match.group())
             comment = parsed.get("comment", comment)
-            emotion = parsed.get("emotion", emotion)
-            if emotion not in ("happy", "laugh", "shocked", "sad", "default"):
-                emotion = "default"
+            # Backend emotion is authoritative — ignore frontend guess
+            emotion = backend_emotion
         else:
             comment = raw.strip('"').strip("'")[:120]
     except Exception:
         pass
 
-    # Track teased players
+    # Track teased players AFTER returning response (fire-and-forget)
     if last_place and last_place not in teased:
         game_ref.update({"teased_players": ArrayUnion([last_place])})
 
@@ -669,58 +663,33 @@ async def coach_finale(
     was_teased = req.winner in teased
     was_favorite = req.winner == favorite
 
+    # Backend determines emotion (single source of truth)
     if was_teased:
-        scenario = f"""The winner is {req.winner} — a player you TEASED AND ROASTED ALL GAME LONG. You made fun of them every single round. And now they WON.
-You are absolutely SHAKEN. This is your villain origin story. Eat your words dramatically. You're both proud and terrified. Maybe question everything you know about board games.
-Be dramatic. Be funny. Be humbled. This is your character arc moment."""
-        default_emotion = "shocked"
+        backend_emotion = "shocked"
+        scenario = f"The winner is {req.winner} — a player you ROASTED all game! Eat your words dramatically. You're SHAKEN."
     elif was_favorite:
-        scenario = f"""The winner is {req.winner} — YOUR FAVORITE PLAYER! The one you hyped up since round 1! You BELIEVED in them when nobody else did (maybe).
-CREDIT YOURSELF. You were their biggest fan. "I CALLED IT!" energy. Throw a virtual parade. You're basically their agent now.
-Be LOUD. Be proud. Take all the credit."""
-        default_emotion = "happy"
+        backend_emotion = "happy"
+        scenario = f"The winner is {req.winner} — YOUR favorite! I CALLED IT! Take all the credit! 🎉"
     else:
-        scenario = f"""The winner is {req.winner}. But YOUR favorite player was {favorite} — and they DIDN'T win.
-You're a good sport though! React with genuine class and excitement for the winner, but maybe a tiny tear for your favorite.
-Be warm, funny, gracious. A true coach moment."""
-        default_emotion = "laugh"
+        backend_emotion = "laugh"
+        scenario = f"The winner is {req.winner}. Your favorite {favorite} didn't win, but you're gracious — maybe a tiny tear."
 
-    prompt = f"""You are Mr. Slow — the most dramatic, over-the-top, hilariously biased board game coach ever.
+    prompt = f"""You are Mr. Slow — dramatic biased coach. {scenario} Final: {json.dumps(req.final_scores)}. Under 30 words. JSON only: {{"comment": "...", "emotion": "{backend_emotion}"}}"""
 
-YOUR PERSONALITY:
-- Excitable sports commentator meets hype man meets dramatic telenovela narrator.
-- You use exclamation marks like they're going out of style.
-- You speak in punchy, dramatic bursts.
-
-SCENARIO:
-{scenario}
-
-FINAL SCORES: {json.dumps(req.final_scores)}
-
-RULES:
-- Keep it under 30 words. Make every word count.
-- This is the FINALE — go big or go home. Maximum drama.
-- Never actually mean — you love these players.
-
-You MUST respond in this EXACT JSON format only, nothing else:
-{{"comment": "your dramatic finale comment here", "emotion": "one of: happy, laugh, shocked, sad, default"}}"""
-
-    comment = "What a game! Congratulations to the winner! 🏆"
-    emotion = default_emotion
+    comment = "What a game! Congratulations! 🏆"
+    emotion = backend_emotion
 
     try:
         response = coach_model.generate_content(
             prompt,
-            generation_config={"temperature": 0.95, "max_output_tokens": 150},
+            generation_config=COACH_GEN_CONFIG,
         )
         raw = response.text.strip()
         json_match = re.search(r'\{[^}]+\}', raw)
         if json_match:
             parsed = json.loads(json_match.group())
             comment = parsed.get("comment", comment)
-            emotion = parsed.get("emotion", emotion)
-            if emotion not in ("happy", "laugh", "shocked", "sad", "default"):
-                emotion = default_emotion
+            emotion = backend_emotion  # Backend authoritative
         else:
             comment = raw.strip('"').strip("'")[:150]
     except Exception:
