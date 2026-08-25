@@ -16,7 +16,7 @@ const EMOTION_IMAGES = {
 }
 
 // Preload all images at module load — eliminates network flicker on emotion swap
-const PRELOADED_IMAGES = useMemo(() => {
+const PRELOADED_IMAGES = (() => {
   const imgs = {}
   Object.values(EMOTION_IMAGES).forEach(src => {
     const img = new Image()
@@ -24,7 +24,7 @@ const PRELOADED_IMAGES = useMemo(() => {
     imgs[src] = img
   })
   return imgs
-}, [])
+})()
 
 const BUBBLE_STYLES = {
   default: { bg: '#faf5f0', border: '#ebb7a3', text: '#683328' },
