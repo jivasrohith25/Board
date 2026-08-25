@@ -32,6 +32,7 @@ export function PointEntryScreen() {
   const undoTimerRef = useRef(null)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const pendingQueue = useRef([])
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [isVoiceActive, setIsVoiceActive] = useState(false)
   const [pendingScores, setPendingScores] = useState({})
   const [unrecognizedNames, setUnrecognizedNames] = useState([])
@@ -145,6 +146,18 @@ export function PointEntryScreen() {
       window.removeEventListener('offline', off)
     }
   }, [])
+
+  // Warn before unload if game has data
+  useEffect(() => {
+    const handler = (e) => {
+      if (roundHistory.length > 0 || Object.values(scores).some(v => v !== '' && v !== undefined)) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [roundHistory, scores])
 
   useEffect(() => {
     if (isOnline && pendingQueue.current.length > 0) {
@@ -391,32 +404,40 @@ export function PointEntryScreen() {
         </h2>
         <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0">
           <AnimatePresence mode="popLayout">
-            {sorted.map((player, i) => (
-              <motion.div
-                key={player.name}
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl min-w-[140px] lg:min-w-0 ${
-                  i === 0 ? 'bg-primary-50 border border-primary-200' : 'bg-warm-50'
-                }`}
-              >
-                <span className={`text-sm font-bold w-6 text-center ${
-                  i === 0 ? 'text-primary-600' : 'text-warm-400'
-                }`}>
-                  {i === 0 ? '👑' : `#${i + 1}`}
-                </span>
-                <span className="flex-1 font-medium text-warm-900 text-sm truncate">
-                  {player.name}
-                </span>
-                <span className={`font-bold font-mono text-lg ${
-                  i === 0 ? 'text-primary-600' : 'text-warm-700'
-                }`}>
-                  {player.score}
-                </span>
-              </motion.div>
-            ))}
+            {sorted.map((player, i) => {
+              const isTied = i > 0 && player.score === sorted[i - 1].score
+              return (
+                <motion.div
+                  key={player.name}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl min-w-[140px] lg:min-w-0 ${
+                    i === 0 && !isTied ? 'bg-primary-50 border border-primary-200' : 'bg-warm-50'
+                  } ${isTied ? 'border border-dashed border-primary-300 bg-primary-50/50' : ''}`}
+                >
+                  <span className={`text-sm font-bold w-6 text-center ${
+                    i === 0 && !isTied ? 'text-primary-600' : 'text-warm-400'
+                  }`}>
+                    {i === 0 && !isTied ? '👑' : `#${i + 1}`}
+                  </span>
+                  <span className="flex-1 font-medium text-warm-900 text-sm truncate">
+                    {player.name}
+                    {isTied && (
+                      <span className="ml-1.5 text-[10px] font-bold text-primary-500 bg-primary-100 px-1.5 py-0.5 rounded-full align-middle">
+                        TIE
+                      </span>
+                    )}
+                  </span>
+                  <span className={`font-bold font-mono text-lg ${
+                    i === 0 && !isTied ? 'text-primary-600' : 'text-warm-700'
+                  }`}>
+                    {player.score}
+                  </span>
+                </motion.div>
+              )
+            })}
           </AnimatePresence>
         </div>
       </div>

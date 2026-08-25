@@ -44,7 +44,7 @@ export function HistoryScreen() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="btn-ghost text-sm p-2">
+            <button onClick={() => navigate('/name-input')} className="btn-ghost text-sm p-2">
               ←
             </button>
             <h1 className="text-xl font-bold text-warm-900">Game History</h1>

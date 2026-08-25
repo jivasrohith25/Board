@@ -109,10 +109,20 @@ export function NameInputScreen() {
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => navigate('/dice')}
-              className="btn-ghost text-sm flex items-center gap-1"
+              className="btn-ghost text-sm flex flex-col items-center gap-0.5 leading-none"
               title="Dice Roller"
             >
-              🎲
+              <span className="text-xl">🎲</span>
+              <span className="text-[10px] font-medium text-warm-500">Dice</span>
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => navigate('/history')}
+              className="btn-ghost text-sm flex flex-col items-center gap-0.5 leading-none"
+              title="Game History"
+            >
+              <span className="text-xl">📜</span>
+              <span className="text-[10px] font-medium text-warm-500">History</span>
             </motion.button>
             <button onClick={logout} className="btn-ghost text-sm">
               Logout

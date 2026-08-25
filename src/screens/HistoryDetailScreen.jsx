@@ -55,7 +55,7 @@ export function HistoryDetailScreen() {
       <div className="max-w-lg mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => navigate('/history')} className="btn-ghost text-sm p-2">
+          <button onClick={() => navigate('/history', { replace: true })} className="btn-ghost text-sm p-2">
             ←
           </button>
           <div>
