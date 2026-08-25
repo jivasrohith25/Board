@@ -560,7 +560,7 @@ async def coach_comment(
     user: dict = Depends(authenticate),
 ):
     if not COACH_ENABLED:
-        return {"comment": "Great round!", "favorite_player": ""}
+        return {"comment": "Great round!", "favorite_player": "", "emotion": "default"}
 
     db = firestore.client()
     game_ref = db.collection("games").document(req.game_id)
@@ -582,28 +582,60 @@ async def coach_comment(
     teased = game_data.get("teased_players", [])
     last_place = min(req.totals, key=req.totals.get) if req.totals else ""
 
-    prompt = (
-        f"You are Mr. Slow, a hilarious board game coach. You have ONE favorite player: {favorite}. "
-        f"You openly hype them up mercilessly. You affectionately tease whoever is in LAST PLACE: {last_place}. "
-        f"Keep it under 20 words. Funny, good-natured, never actually mean. "
-        f"This is round {req.round_number}. "
-        f"This round's scores: {json.dumps(req.scores)}. "
-        f"Running totals: {json.dumps(req.totals)}. "
-        f"Previously teased players (react with shock if any of them is now doing well): {json.dumps(teased)}. "
-        f"Give ONLY the comment text, no quotes, no label."
-    )
+    prompt = f"""You are Mr. Slow — the most dramatic, over-the-top, hilariously biased board game coach ever.
+
+YOUR PERSONALITY:
+- You have exactly ONE favorite player: {favorite}. You are OBSESSED with them. You call them "my champ", "my legend", "the chosen one". You hyp them up like they just won the Olympics even if they scored 2 points.
+- You ROAST whoever is in last place ({last_place}) with affectionate trash talk. Think sitcom dad energy — never cruel, always hilarious. Use silly nicknames.
+- If a previously-teased player ({json.dumps(teased)}) is now doing well, you are SHOCKED. "WAIT WHAT? {teased[0] if teased else 'someone'} is WINNING?!" energy.
+- You speak like an excitable sports commentator mixed with a hype man. Use emoji sparingly but effectively. Exclamation marks are your best friend.
+
+THIS ROUND ({req.round_number}):
+- This round's scores: {json.dumps(req.scores)}
+- Running totals: {json.dumps(req.totals)}
+
+RULES:
+- Keep it under 25 words. Punchy. Snappy.
+- Never actually mean — you love ALL these players, you just show it chaotically.
+- React to dramatic score swings, comebacks, or ties with extra excitement.
+
+You MUST respond in this EXACT JSON format only, nothing else:
+{{"comment": "your hilarious comment here", "emotion": "one of: happy, laugh, shocked, sad, default"}}
+
+EMOTION GUIDE:
+- "happy" → your favorite player just crushed it or is winning
+- "laugh" → you're roasting the last place player or something funny happened
+- "shocked" → a previously bad player is suddenly doing well
+- "sad" → your favorite player is struggling or in last place
+- "default" → normal round, nothing dramatic"""
+
+    comment = "Great round, everyone! Keep rolling! 🎲"
+    emotion = "default"
 
     try:
-        response = coach_model.generate_content(prompt)
-        comment = response.text.strip().strip('"').strip("'")
+        response = coach_model.generate_content(
+            prompt,
+            generation_config={"temperature": 0.9, "max_output_tokens": 150},
+        )
+        raw = response.text.strip()
+        # Try to extract JSON from the response
+        json_match = re.search(r'\{[^}]+\}', raw)
+        if json_match:
+            parsed = json.loads(json_match.group())
+            comment = parsed.get("comment", comment)
+            emotion = parsed.get("emotion", emotion)
+            if emotion not in ("happy", "laugh", "shocked", "sad", "default"):
+                emotion = "default"
+        else:
+            comment = raw.strip('"').strip("'")[:120]
     except Exception:
-        comment = "Great round, everyone! Keep rolling! 🎲"
+        pass
 
     # Track teased players
     if last_place and last_place not in teased:
         game_ref.update({"teased_players": ArrayUnion([last_place])})
 
-    return {"comment": comment, "favorite_player": favorite}
+    return {"comment": comment, "favorite_player": favorite, "emotion": emotion}
 
 
 # ---------------------------------------------------------------------------
@@ -621,7 +653,7 @@ async def coach_finale(
     user: dict = Depends(authenticate),
 ):
     if not COACH_ENABLED:
-        return {"comment": "What a game!", "was_teased": False, "was_favorite": False}
+        return {"comment": "What a game!", "was_teased": False, "was_favorite": False, "emotion": "default"}
 
     db = firestore.client()
     game_doc = db.collection("games").document(req.game_id).get()
@@ -638,40 +670,67 @@ async def coach_finale(
     was_favorite = req.winner == favorite
 
     if was_teased:
-        scenario = (
-            f"The winner is {req.winner}, who was TEASED ALL GAME by Mr. Slow. "
-            f"React with genuine shock and disbelief that the player you roasted just won. "
-            f"Eat your words a little. Funny, dramatic. Under 25 words."
-        )
+        scenario = f"""The winner is {req.winner} — a player you TEASED AND ROASTED ALL GAME LONG. You made fun of them every single round. And now they WON.
+You are absolutely SHAKEN. This is your villain origin story. Eat your words dramatically. You're both proud and terrified. Maybe question everything you know about board games.
+Be dramatic. Be funny. Be humbled. This is your character arc moment."""
+        default_emotion = "shocked"
     elif was_favorite:
-        scenario = (
-            f"The winner is {req.winner}, Mr. Slow's FAVORITE player! "
-            f"Celebrate loudly, take credit for believing in them. "
-            f"Hype it up. Under 25 words."
-        )
+        scenario = f"""The winner is {req.winner} — YOUR FAVORITE PLAYER! The one you hyped up since round 1! You BELIEVED in them when nobody else did (maybe).
+CREDIT YOURSELF. You were their biggest fan. "I CALLED IT!" energy. Throw a virtual parade. You're basically their agent now.
+Be LOUD. Be proud. Take all the credit."""
+        default_emotion = "happy"
     else:
-        scenario = (
-            f"The winner is {req.winner}. Mr. Slow's favorite was {favorite}. "
-            f"React with genuine excitement as a good sport. "
-            f"Under 25 words."
-        )
+        scenario = f"""The winner is {req.winner}. But YOUR favorite player was {favorite} — and they DIDN'T win.
+You're a good sport though! React with genuine class and excitement for the winner, but maybe a tiny tear for your favorite.
+Be warm, funny, gracious. A true coach moment."""
+        default_emotion = "laugh"
 
-    prompt = (
-        f"You are Mr. Slow, a hilarious board game coach. Final scores: {json.dumps(req.final_scores)}. "
-        f"{scenario} "
-        f"Give ONLY the comment text, no quotes, no label."
-    )
+    prompt = f"""You are Mr. Slow — the most dramatic, over-the-top, hilariously biased board game coach ever.
+
+YOUR PERSONALITY:
+- Excitable sports commentator meets hype man meets dramatic telenovela narrator.
+- You use exclamation marks like they're going out of style.
+- You speak in punchy, dramatic bursts.
+
+SCENARIO:
+{scenario}
+
+FINAL SCORES: {json.dumps(req.final_scores)}
+
+RULES:
+- Keep it under 30 words. Make every word count.
+- This is the FINALE — go big or go home. Maximum drama.
+- Never actually mean — you love these players.
+
+You MUST respond in this EXACT JSON format only, nothing else:
+{{"comment": "your dramatic finale comment here", "emotion": "one of: happy, laugh, shocked, sad, default"}}"""
+
+    comment = "What a game! Congratulations to the winner! 🏆"
+    emotion = default_emotion
 
     try:
-        response = coach_model.generate_content(prompt)
-        comment = response.text.strip().strip('"').strip("'")
+        response = coach_model.generate_content(
+            prompt,
+            generation_config={"temperature": 0.95, "max_output_tokens": 150},
+        )
+        raw = response.text.strip()
+        json_match = re.search(r'\{[^}]+\}', raw)
+        if json_match:
+            parsed = json.loads(json_match.group())
+            comment = parsed.get("comment", comment)
+            emotion = parsed.get("emotion", emotion)
+            if emotion not in ("happy", "laugh", "shocked", "sad", "default"):
+                emotion = default_emotion
+        else:
+            comment = raw.strip('"').strip("'")[:150]
     except Exception:
-        comment = "What a game! Congratulations to the winner! 🏆"
+        pass
 
     return {
         "comment": comment,
         "was_teased": was_teased,
         "was_favorite": was_favorite,
+        "emotion": emotion,
     }
 
 

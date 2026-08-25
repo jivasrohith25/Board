@@ -324,14 +324,7 @@ export function PointEntryScreen() {
       .then(data => {
         if (data.comment) {
           setCoachComment(data.comment)
-          // Determine emotion
-          if (data.favorite_player && roundScores[data.favorite_player] !== undefined) {
-            const favScore = roundScores[data.favorite_player]
-            const maxRoundScore = Math.max(...Object.values(roundScores))
-            setCoachEmotion(favScore === maxRoundScore ? 'happy' : 'default')
-          } else {
-            setCoachEmotion('laugh')
-          }
+          setCoachEmotion(data.emotion || 'default')
         }
       })
       .catch(() => {}) // silently drop errors

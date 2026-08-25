@@ -100,13 +100,7 @@ export function ResultsScreen() {
             .then(data => {
               if (data.comment) {
                 setCoachComment(data.comment)
-                if (data.was_teased) {
-                  setCoachEmotion('shocked')
-                } else if (data.was_favorite) {
-                  setCoachEmotion('happy')
-                } else {
-                  setCoachEmotion('laugh')
-                }
+                setCoachEmotion(data.emotion || 'default')
               }
             })
             .catch(() => {})
