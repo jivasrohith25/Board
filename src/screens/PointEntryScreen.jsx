@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { v4 as uuidv4 } from 'uuid'
 import { doc, getDoc, setDoc, deleteDoc, updateDoc, collection, getDocs, serverTimestamp } from 'firebase/firestore'
 import { db, useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { Modal } from '../components/Modal'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
+import { GameCoach } from '../components/GameCoach'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
@@ -34,8 +36,11 @@ export function PointEntryScreen() {
   const pendingQueue = useRef([])
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [isVoiceActive, setIsVoiceActive] = useState(false)
+  const [coachComment, setCoachComment] = useState('')
+  const [coachEmotion, setCoachEmotion] = useState('default')
   const [pendingScores, setPendingScores] = useState({})
   const [unrecognizedNames, setUnrecognizedNames] = useState([])
+  const [popupVisible, setPopupVisible] = useState(false)
 
   const handleVoiceTranscript = useCallback(async (rawText) => {
     setIsVoiceActive(false)
@@ -60,12 +65,14 @@ export function PointEntryScreen() {
       const data = await res.json()
 
       // Pre-fill matched scores in PENDING state
+      let hasPopup = false
       if (data.matched && data.matched.length > 0) {
         const newPending = {}
         data.matched.forEach(m => {
           newPending[m.player] = m.score
         })
         setPendingScores(prev => ({ ...prev, ...newPending }))
+        hasPopup = true
         showInfo(`Voice matched ${data.matched.length} player(s) — review below`)
       } else {
         showError('No player names recognized in speech')
@@ -74,9 +81,13 @@ export function PointEntryScreen() {
       // Show unrecognized names warning
       if (data.unrecognized_names && data.unrecognized_names.length > 0) {
         setUnrecognizedNames(data.unrecognized_names)
+        hasPopup = true
       } else {
         setUnrecognizedNames([])
       }
+
+      // Trigger auto-fade timer
+      if (hasPopup) setPopupVisible(true)
 
       // Show errors
       if (data.errors && data.errors.length > 0) {
@@ -117,6 +128,7 @@ export function PointEntryScreen() {
       setPendingScores(prev => {
         const next = { ...prev }
         delete next[player]
+        if (Object.keys(next).length === 0) setPopupVisible(false)
         return next
       })
     }
@@ -128,23 +140,26 @@ export function PointEntryScreen() {
       handleScoreChange(player, score.toString())
     })
     setPendingScores({})
+    setPopupVisible(false)
   }
 
   // Dismiss pending scores
   const dismissPending = () => {
     setPendingScores({})
     setUnrecognizedNames([])
+    setPopupVisible(false)
   }
 
   // Auto-fade voice popups after 3 seconds
   useEffect(() => {
-    if (Object.keys(pendingScores).length === 0 && unrecognizedNames.length === 0) return
+    if (!popupVisible) return
     const timer = setTimeout(() => {
       setPendingScores({})
       setUnrecognizedNames([])
+      setPopupVisible(false)
     }, 3000)
     return () => clearTimeout(timer)
-  }, [pendingScores, unrecognizedNames])
+  }, [popupVisible])
 
   useEffect(() => {
     const on = () => setIsOnline(true)
@@ -289,10 +304,51 @@ export function PointEntryScreen() {
     await writeRound()
     setSubmitting(false)
 
+    // Fire-and-forget coach comment (non-blocking)
+    const newTotalsForCoach = { ...newTotals }
+    fetch(`${API_BASE}/coach-comment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${await user.getIdToken()}`,
+      },
+      body: JSON.stringify({
+        game_id: gameId,
+        round_number: parseInt(roundNum),
+        scores: roundScores,
+        totals: newTotalsForCoach,
+      }),
+      signal: AbortSignal.timeout(4000),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.comment) {
+          setCoachComment(data.comment)
+          // Determine emotion
+          if (data.favorite_player && roundScores[data.favorite_player] !== undefined) {
+            const favScore = roundScores[data.favorite_player]
+            const maxRoundScore = Math.max(...Object.values(roundScores))
+            setCoachEmotion(favScore === maxRoundScore ? 'happy' : 'default')
+          } else {
+            setCoachEmotion('laugh')
+          }
+        }
+      })
+      .catch(() => {}) // silently drop errors
+
     // Undo window
     setUndoAvailable(true)
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
     undoTimerRef.current = setTimeout(() => setUndoAvailable(false), 10000)
+
+    // Auto-transition to results if round limit reached
+    // roundNum is the round we just submitted (1-indexed string)
+    if (game.roundLength && parseInt(roundNum) >= game.roundLength) {
+      const savedId = await archiveGame()
+      if (savedId) {
+        navigate(`/results/${savedId || gameId}`)
+      }
+    }
   }
 
   const undoLastRound = async () => {
@@ -694,6 +750,11 @@ export function PointEntryScreen() {
           </button>
         </div>
       </Modal>
+
+      {/* Coach */}
+      <div className="fixed bottom-4 left-4 z-30">
+        <GameCoach comment={coachComment} emotion={coachEmotion} fadeAfterMs={5000} />
+      </div>
 
       {/* End Game Modal */}
       <Modal

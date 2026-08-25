@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import firebase_admin
+from google.cloud.firestore_v1.base import ArrayUnion
 from firebase_admin import auth, firestore
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,6 +32,21 @@ if not firebase_admin._apps:
 # ---------------------------------------------------------------------------
 gcs_client = gcs_storage.Client()
 BUCKET_NAME = os.environ.get("GCS_BUCKET", "bgsk-game-history")
+
+# ---------------------------------------------------------------------------
+# Vertex AI — Game Coach
+# ---------------------------------------------------------------------------
+try:
+    import vertexai
+    from vertexai.generative_models import GenerativeModel
+
+    GCP_PROJECT = os.environ.get("GCP_PROJECT_ID", os.environ.get("GOOGLE_CLOUD_PROJECT", ""))
+    vertexai.init(project=GCP_PROJECT, location="us-central1")
+    coach_model = GenerativeModel("gemini-2.0-flash")
+    COACH_ENABLED = bool(GCP_PROJECT)
+except Exception:
+    COACH_ENABLED = False
+    coach_model = None
 
 # ---------------------------------------------------------------------------
 # Per-username write locks
@@ -526,6 +542,137 @@ async def get_game_detail(
             os.unlink(local_path)
         except OSError:
             pass
+
+
+# ---------------------------------------------------------------------------
+# g) POST /coach-comment — in-round AI commentary
+# ---------------------------------------------------------------------------
+class CoachCommentRequest(BaseModel):
+    game_id: str
+    round_number: int
+    scores: dict[str, int]
+    totals: dict[str, int]
+
+
+@app.post("/coach-comment")
+async def coach_comment(
+    req: CoachCommentRequest,
+    user: dict = Depends(authenticate),
+):
+    if not COACH_ENABLED:
+        return {"comment": "Great round!", "favorite_player": ""}
+
+    db = firestore.client()
+    game_ref = db.collection("games").document(req.game_id)
+    game_doc = game_ref.get()
+    if not game_doc.exists:
+        raise HTTPException(status_code=404, detail="Game not found")
+    if game_doc.to_dict().get("createdBy") != user["uid"]:
+        raise HTTPException(status_code=403, detail="Not your game")
+
+    game_data = game_doc.to_dict()
+
+    # Lock in favorite player (random pick once, persists for game)
+    favorite = game_data.get("favorite_player")
+    if not favorite:
+        players = list(req.totals.keys())
+        favorite = players[req.round_number % len(players)]
+        game_ref.update({"favorite_player": favorite})
+
+    teased = game_data.get("teased_players", [])
+    last_place = min(req.totals, key=req.totals.get) if req.totals else ""
+
+    prompt = (
+        f"You are Mr. Slow, a hilarious board game coach. You have ONE favorite player: {favorite}. "
+        f"You openly hype them up mercilessly. You affectionately tease whoever is in LAST PLACE: {last_place}. "
+        f"Keep it under 20 words. Funny, good-natured, never actually mean. "
+        f"This is round {req.round_number}. "
+        f"This round's scores: {json.dumps(req.scores)}. "
+        f"Running totals: {json.dumps(req.totals)}. "
+        f"Previously teased players (react with shock if any of them is now doing well): {json.dumps(teased)}. "
+        f"Give ONLY the comment text, no quotes, no label."
+    )
+
+    try:
+        response = coach_model.generate_content(prompt)
+        comment = response.text.strip().strip('"').strip("'")
+    except Exception:
+        comment = "Great round, everyone! Keep rolling! 🎲"
+
+    # Track teased players
+    if last_place and last_place not in teased:
+        game_ref.update({"teased_players": ArrayUnion([last_place])})
+
+    return {"comment": comment, "favorite_player": favorite}
+
+
+# ---------------------------------------------------------------------------
+# h) POST /coach-finale — end-of-game AI commentary
+# ---------------------------------------------------------------------------
+class CoachFinaleRequest(BaseModel):
+    game_id: str
+    winner: str
+    final_scores: dict[str, int]
+
+
+@app.post("/coach-finale")
+async def coach_finale(
+    req: CoachFinaleRequest,
+    user: dict = Depends(authenticate),
+):
+    if not COACH_ENABLED:
+        return {"comment": "What a game!", "was_teased": False, "was_favorite": False}
+
+    db = firestore.client()
+    game_doc = db.collection("games").document(req.game_id).get()
+    if not game_doc.exists:
+        raise HTTPException(status_code=404, detail="Game not found")
+    if game_doc.to_dict().get("createdBy") != user["uid"]:
+        raise HTTPException(status_code=403, detail="Not your game")
+
+    game_data = game_doc.to_dict()
+    favorite = game_data.get("favorite_player", "")
+    teased = game_data.get("teased_players", [])
+
+    was_teased = req.winner in teased
+    was_favorite = req.winner == favorite
+
+    if was_teased:
+        scenario = (
+            f"The winner is {req.winner}, who was TEASED ALL GAME by Mr. Slow. "
+            f"React with genuine shock and disbelief that the player you roasted just won. "
+            f"Eat your words a little. Funny, dramatic. Under 25 words."
+        )
+    elif was_favorite:
+        scenario = (
+            f"The winner is {req.winner}, Mr. Slow's FAVORITE player! "
+            f"Celebrate loudly, take credit for believing in them. "
+            f"Hype it up. Under 25 words."
+        )
+    else:
+        scenario = (
+            f"The winner is {req.winner}. Mr. Slow's favorite was {favorite}. "
+            f"React with genuine excitement as a good sport. "
+            f"Under 25 words."
+        )
+
+    prompt = (
+        f"You are Mr. Slow, a hilarious board game coach. Final scores: {json.dumps(req.final_scores)}. "
+        f"{scenario} "
+        f"Give ONLY the comment text, no quotes, no label."
+    )
+
+    try:
+        response = coach_model.generate_content(prompt)
+        comment = response.text.strip().strip('"').strip("'")
+    except Exception:
+        comment = "What a game! Congratulations to the winner! 🏆"
+
+    return {
+        "comment": comment,
+        "was_teased": was_teased,
+        "was_favorite": was_favorite,
+    }
 
 
 # ---------------------------------------------------------------------------

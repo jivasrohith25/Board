@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import confetti from 'canvas-confetti'
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
+import { v4 as uuidv4 } from 'uuid'
+import { doc, getDoc, collection, getDocs, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../contexts/AuthContext'
 import { useAuth } from '../contexts/AuthContext'
 import { FireworksBackground } from '../components/FireworksBackground'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import { ConfirmModal } from '../components/Modal'
 import { PlayerAvatar } from '../components/PlayerAvatar'
+import { GameCoach } from '../components/GameCoach'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
@@ -47,6 +49,10 @@ export function ResultsScreen() {
   const [roundData, setRoundData] = useState([])
   const [showHomeConfirm, setShowHomeConfirm] = useState(false)
   const [showHistoryConfirm, setShowHistoryConfirm] = useState(false)
+  const [showRematchConfirm, setShowRematchConfirm] = useState(false)
+  const [rematching, setRematching] = useState(false)
+  const [coachComment, setCoachComment] = useState('')
+  const [coachEmotion, setCoachEmotion] = useState('default')
   const [playerAvatars, setPlayerAvatars] = useState({})
 
   // Get archivedGameId from navigation state or URL
@@ -72,6 +78,41 @@ export function ResultsScreen() {
         confetti({ particleCount: 30, spread: 60, origin: { x: 0.3, y: 0.7 } })
         confetti({ particleCount: 30, spread: 60, origin: { x: 0.7, y: 0.7 } })
       }, 3000)
+
+      // Fire-and-forget coach finale
+      const winner = sortedPlayers[0]?.name || ''
+      if (winner) {
+        user.getIdToken().then(token => {
+          fetch(`${API_BASE}/coach-finale`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              game_id: gameId,
+              winner,
+              final_scores: totalScores,
+            }),
+            signal: AbortSignal.timeout(4000),
+          })
+            .then(r => r.json())
+            .then(data => {
+              if (data.comment) {
+                setCoachComment(data.comment)
+                if (data.was_teased) {
+                  setCoachEmotion('shocked')
+                } else if (data.was_favorite) {
+                  setCoachEmotion('happy')
+                } else {
+                  setCoachEmotion('laugh')
+                }
+              }
+            })
+            .catch(() => {})
+        }).catch(() => {})
+      }
+
       return () => { clearTimeout(t1); clearTimeout(t2) }
     }
   }, [loading, game])
@@ -124,6 +165,28 @@ export function ResultsScreen() {
       setPlayerAvatars(avatarMap)
     } catch (err) {
       console.error('Failed to load avatars:', err)
+    }
+  }
+
+  const handleRematch = async () => {
+    setShowRematchConfirm(false)
+    if (!game || !game.players || rematching) return
+    setRematching(true)
+    try {
+      const newGameId = uuidv4()
+      await setDoc(doc(db, 'games', newGameId), {
+        createdBy: user.uid,
+        username: username,
+        players: game.players,
+        roundLength: game.roundLength || 5,
+        currentRound: 1,
+        status: 'active',
+        createdAt: serverTimestamp(),
+      })
+      navigate(`/point-entry/${newGameId}`)
+    } catch (err) {
+      console.error('Rematch failed:', err)
+      setRematching(false)
     }
   }
 
@@ -317,6 +380,18 @@ export function ResultsScreen() {
       <FireworksBackground />
 
       <div className="relative z-10 px-4 py-8 max-w-lg mx-auto">
+        {/* Mr. Slow Coach */}
+        {coachComment && (
+          <motion.div
+            className="flex justify-center mb-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2 }}
+          >
+            <GameCoach comment={coachComment} emotion={coachEmotion} fadeAfterMs={10000} />
+          </motion.div>
+        )}
+
         {/* Header */}
         <motion.div
           className="text-center mb-8"
@@ -565,36 +640,55 @@ export function ResultsScreen() {
 
         {/* Actions */}
         <motion.div
-          className="flex items-center justify-center gap-3"
+          className="flex flex-col items-center gap-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.9 }}
         >
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setShowHomeConfirm(true)}
-            className="btn-ghost border border-warm-200 px-8"
-          >
-            🏠 Back to Home
-          </motion.button>
-
-          {archivedGameId && !archiving && (
+          <div className="flex items-center justify-center gap-3">
             <motion.button
               whileTap={{ scale: 0.97 }}
-              onClick={() => setShowHistoryConfirm(true)}
-              className="btn-ghost border border-warm-200 px-4"
+              onClick={() => setShowHomeConfirm(true)}
+              className="btn-ghost border border-warm-200 px-6"
             >
-              📜 Game History
+              🏠 Home
             </motion.button>
-          )}
-          {archiving && (
-            <div className="w-10 h-10 rounded-full bg-warm-100 flex items-center justify-center">
-              <svg className="w-5 h-5 text-warm-400 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-              </svg>
-            </div>
-          )}
+
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowRematchConfirm(true)}
+              disabled={rematching}
+              className="btn-primary px-6"
+            >
+              {rematching ? (
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  Starting…
+                </span>
+              ) : '🔄 Rematch'}
+            </motion.button>
+
+            {archivedGameId && !archiving && (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setShowHistoryConfirm(true)}
+                className="btn-ghost border border-warm-200 px-4"
+              >
+                📜 History
+              </motion.button>
+            )}
+            {archiving && (
+              <div className="w-10 h-10 rounded-full bg-warm-100 flex items-center justify-center">
+                <svg className="w-5 h-5 text-warm-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
 
@@ -618,6 +712,17 @@ export function ResultsScreen() {
         message="Leave the podium to view your game history?"
         confirmText="View History"
         cancelText="Stay here"
+      />
+
+      {/* Confirm: Rematch */}
+      <ConfirmModal
+        isOpen={showRematchConfirm}
+        onClose={() => setShowRematchConfirm(false)}
+        onConfirm={handleRematch}
+        title="Rematch?"
+        message={`Start a new game with the same ${game?.players?.length || 0} players? Scores will be reset.`}
+        confirmText="Let's go!"
+        cancelText="Cancel"
       />
     </div>
   )
