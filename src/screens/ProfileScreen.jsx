@@ -29,22 +29,22 @@ export function ProfileScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-warm-50 px-4 py-6">
+    <div className="min-h-screen bg-warm-50 px-4 py-5">
       <div className="max-w-md mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-5">
           <button onClick={() => navigate('/name-input')} className="btn-ghost text-sm p-2">
             ←
           </button>
           <div>
-            <h1 className="text-xl font-bold text-warm-900">Profile</h1>
-            <p className="text-warm-500 text-sm">Choose your avatar</p>
+            <h1 className="font-display text-display-sm text-warm-900">Profile</h1>
+            <p className="text-warm-400 text-sm">Choose your avatar</p>
           </div>
         </div>
 
         {/* Current User */}
-        <div className="card p-4 mb-6 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center flex-shrink-0">
+        <div className="card p-4 mb-5 flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden bg-primary-100 flex items-center justify-center flex-shrink-0 ring-2 ring-primary-200/50 ring-offset-2 ring-offset-white">
             {selected ? (
               <img
                 src={AVATARS.find(a => a.id === selected)?.file}
@@ -58,32 +58,30 @@ export function ProfileScreen() {
             )}
           </div>
           <div>
-            <p className="font-bold text-warm-900">{user?.displayName || username}</p>
-            <p className="text-warm-500 text-sm">@{username}</p>
+            <p className="font-display font-bold text-warm-900">{user?.displayName || username}</p>
+            <p className="text-warm-400 text-xs font-medium">@{username}</p>
           </div>
         </div>
 
         {/* Avatar Grid */}
-        <div className="card p-4 mb-6">
-          <label className="block text-sm font-bold text-warm-500 uppercase tracking-wider mb-4">
-            Pick Your Character
-          </label>
-          <div className="grid grid-cols-4 gap-3">
+        <div className="card p-4 mb-5">
+          <label className="section-label mb-3 block">Pick Your Character</label>
+          <div className="grid grid-cols-4 gap-2.5">
             {AVATARS.map(avatarItem => {
               const isSelected = selected === avatarItem.id
               return (
                 <motion.button
                   key={avatarItem.id}
-                  whileTap={{ scale: 0.9 }}
+                  whileTap={{ scale: 0.92 }}
                   onClick={() => setSelected(avatarItem.id)}
                   className={`flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all duration-150 ${
                     isSelected
-                      ? 'bg-primary-50 border-2 border-primary-500 shadow-md shadow-primary-200/50'
-                      : 'bg-warm-50 border-2 border-transparent hover:border-warm-300'
+                      ? 'bg-primary-50 border-2 border-primary-400 shadow-sm shadow-primary-200/40'
+                      : 'bg-warm-50/60 border-2 border-transparent hover:border-warm-200 hover:bg-warm-50'
                   }`}
                 >
-                  <div className={`w-14 h-14 rounded-full overflow-hidden flex items-center justify-center ${
-                    isSelected ? 'ring-2 ring-primary-400 ring-offset-2' : ''
+                  <div className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center transition-all ${
+                    isSelected ? 'ring-2 ring-primary-400 ring-offset-1 ring-offset-primary-50' : ''
                   }`}>
                     <img
                       src={avatarItem.file}
@@ -91,8 +89,8 @@ export function ProfileScreen() {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <span className={`text-[11px] font-medium truncate w-full text-center ${
-                    isSelected ? 'text-primary-700' : 'text-warm-600'
+                  <span className={`text-[10px] font-medium truncate w-full text-center ${
+                    isSelected ? 'text-primary-700' : 'text-warm-500'
                   }`}>
                     {avatarItem.name}
                   </span>
@@ -100,9 +98,9 @@ export function ProfileScreen() {
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="w-5 h-5 rounded-full bg-primary-500 text-white flex items-center justify-center -mt-1"
+                      className="w-4 h-4 rounded-full bg-primary-500 text-white flex items-center justify-center -mt-0.5"
                     >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     </motion.div>

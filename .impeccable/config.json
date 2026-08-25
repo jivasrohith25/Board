@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-08-25T07:20:12.635Z",
+        "reason": "Intentional body font paired with Outfit display face — Inter chosen for legibility in form inputs and small UI text, not as default slop"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "src/index.css"
+        ],
+        "createdAt": "2026-08-25T07:20:14.840Z",
+        "reason": "Intentional body font paired with Outfit display face — Inter chosen for legibility in form inputs and small UI text"
+      }
+    ]
+  }
+}

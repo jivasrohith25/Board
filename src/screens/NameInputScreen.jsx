@@ -98,58 +98,56 @@ export function NameInputScreen() {
   const canStart = players.length >= 2
 
   return (
-    <div className="min-h-screen bg-warm-50 px-4 py-6">
+    <div className="min-h-screen bg-warm-50 px-4 py-5">
       <div className="max-w-md mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-xl font-bold text-warm-900">New Game</h1>
-            <p className="text-warm-500 text-sm">Add players to get started</p>
+            <h1 className="font-display text-display-sm text-warm-900">New Game</h1>
+            <p className="text-warm-400 text-sm">Add players to get started</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => navigate('/dice')}
-              className="btn-ghost text-sm flex flex-col items-center gap-0.5 leading-none"
+              className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl hover:bg-warm-100 transition-colors"
               title="Dice Roller"
             >
-              <span className="text-xl">🎲</span>
-              <span className="text-[10px] font-medium text-warm-500">Dice</span>
+              <span className="text-lg">🎲</span>
+              <span className="text-[10px] font-medium text-warm-400">Dice</span>
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => navigate('/history')}
-              className="btn-ghost text-sm flex flex-col items-center gap-0.5 leading-none"
+              className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl hover:bg-warm-100 transition-colors"
               title="Game History"
             >
-              <span className="text-xl">📜</span>
-              <span className="text-[10px] font-medium text-warm-500">History</span>
+              <span className="text-lg">📜</span>
+              <span className="text-[10px] font-medium text-warm-400">History</span>
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => navigate('/profile')}
-              className="w-9 h-9 rounded-full overflow-hidden border-2 border-warm-200 hover:border-primary-400 transition-colors flex-shrink-0"
+              className="w-8 h-8 rounded-full overflow-hidden border-2 border-warm-200 hover:border-primary-400 transition-colors flex-shrink-0 ml-1"
               title="Profile"
             >
               {avatar ? (
                 <img src={getAvatarUrl(avatar)} alt="avatar" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-primary-100 flex items-center justify-center text-xs font-bold text-primary-600">
+                <div className="w-full h-full bg-primary-100 flex items-center justify-center text-[10px] font-bold text-primary-600">
                   {username?.[0]?.toUpperCase() || '?'}
                 </div>
               )}
             </motion.button>
-            <button onClick={logout} className="btn-ghost text-sm">
+            <button onClick={logout} className="btn-ghost text-xs ml-1">
               Logout
             </button>
           </div>
         </div>
 
         {/* Name Input */}
-        <div className="card p-4 mb-4">
-          <label className="block text-sm font-medium text-warm-700 mb-2">
-            Player Name
-          </label>
+        <div className="card p-4 mb-3">
+          <label className="section-label mb-2 block">Player Name</label>
           <div className="flex gap-2">
             <input
               ref={inputRef}
@@ -164,14 +162,14 @@ export function NameInputScreen() {
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={addPlayer}
-              className="btn-primary px-4"
+              className="btn-primary px-5"
             >
               Add
             </motion.button>
           </div>
           {error && (
             <motion.p
-              initial={{ opacity: 0, y: -5 }}
+              initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-danger-500 text-xs mt-2"
             >
@@ -181,12 +179,15 @@ export function NameInputScreen() {
         </div>
 
         {/* Player Chips */}
-        <div className="card p-4 mb-4 min-h-[80px]">
-          <label className="block text-sm font-medium text-warm-700 mb-3">
-            Players ({players.length})
-          </label>
+        <div className="card p-4 mb-3 min-h-[72px]">
+          <div className="flex items-center justify-between mb-2.5">
+            <label className="section-label">Players</label>
+            <span className="text-xs font-mono font-bold text-warm-500 bg-warm-100 px-2 py-0.5 rounded-full">
+              {players.length}
+            </span>
+          </div>
           {players.length === 0 ? (
-            <p className="text-warm-400 text-sm text-center py-2">No players added yet</p>
+            <p className="text-warm-300 text-sm text-center py-3">No players added yet</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               <AnimatePresence mode="popLayout">
@@ -194,15 +195,15 @@ export function NameInputScreen() {
                   <motion.div
                     key={name}
                     layout
-                    initial={{ opacity: 0, scale: 0.8 }}
+                    initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    className="chip"
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    className="chip group"
                   >
-                    <span>{name}</span>
+                    <span className="text-warm-700">{name}</span>
                     <button
                       onClick={() => removePlayer(i)}
-                      className="w-4 h-4 flex items-center justify-center rounded-full bg-warm-300 hover:bg-danger-400 text-white text-xs transition-colors"
+                      className="w-4 h-4 flex items-center justify-center rounded-full bg-warm-300/70 hover:bg-danger-400 text-white text-xs transition-colors"
                     >
                       ×
                     </button>
@@ -214,27 +215,27 @@ export function NameInputScreen() {
         </div>
 
         {/* Round Length */}
-        <div className="card p-4 mb-6">
-          <label className="block text-sm font-medium text-warm-700 mb-3">
-            Round Length (points per round)
-          </label>
-          <div className="flex items-center justify-center gap-4">
+        <div className="card p-4 mb-5">
+          <label className="section-label mb-3 block">Rounds</label>
+          <div className="flex items-center justify-center gap-5">
             <motion.button
-              whileTap={{ scale: 0.9 }}
+              whileTap={{ scale: 0.88 }}
               onClick={() => adjustRoundLength(-1)}
               disabled={roundLength <= 1}
-              className="w-10 h-10 rounded-full bg-warm-200 hover:bg-warm-300 text-warm-800 font-bold text-lg flex items-center justify-center transition-colors disabled:opacity-30"
+              className="w-11 h-11 rounded-full bg-warm-100 hover:bg-warm-200 text-warm-600 font-bold text-lg flex items-center justify-center transition-colors disabled:opacity-30 border border-warm-200/50"
             >
               −
             </motion.button>
-            <span className="text-3xl font-bold text-warm-900 w-16 text-center font-mono">
-              {roundLength}
-            </span>
+            <div className="text-center">
+              <span className="text-4xl font-display font-extrabold text-warm-900 w-16 text-center font-mono tabular-nums">
+                {roundLength}
+              </span>
+            </div>
             <motion.button
-              whileTap={{ scale: 0.9 }}
+              whileTap={{ scale: 0.88 }}
               onClick={() => adjustRoundLength(1)}
               disabled={roundLength >= 99}
-              className="w-10 h-10 rounded-full bg-warm-200 hover:bg-warm-300 text-warm-800 font-bold text-lg flex items-center justify-center transition-colors disabled:opacity-30"
+              className="w-11 h-11 rounded-full bg-warm-100 hover:bg-warm-200 text-warm-600 font-bold text-lg flex items-center justify-center transition-colors disabled:opacity-30 border border-warm-200/50"
             >
               +
             </motion.button>
@@ -247,7 +248,7 @@ export function NameInputScreen() {
             whileTap={canStart ? { scale: 0.97 } : {}}
             onClick={handleStart}
             disabled={!canStart || starting}
-            className="btn-primary w-full text-lg"
+            className="btn-primary w-full text-base font-display"
           >
             {starting ? (
               <span className="flex items-center justify-center gap-2">
@@ -259,10 +260,14 @@ export function NameInputScreen() {
               </span>
             ) : '🎮 Start Game'}
           </motion.button>
-          {!canStart && (
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-warm-800 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+          {!canStart && players.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center text-xs text-warm-400 mt-2"
+            >
               Add at least 2 players to start
-            </div>
+            </motion.div>
           )}
         </div>
       </div>

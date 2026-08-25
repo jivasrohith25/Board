@@ -12,7 +12,12 @@ html {
 }
 
 body {
-  @apply bg-warm-50 text-warm-900 font-display min-h-screen;
+  @apply bg-warm-50 text-warm-900 min-h-screen;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Outfit', system-ui, sans-serif;
 }
 
 input[type="number"]::-webkit-inner-spin-button,
@@ -26,8 +31,8 @@ input[type="number"] {
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -35,7 +40,7 @@ input[type="number"] {
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-warm-300 rounded-full hover:bg-warm-400;
+  @apply bg-warm-300/60 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -48,12 +53,17 @@ input[type="number"] {
            hover:bg-primary-600 active:scale-[0.98] transition-all duration-150
            disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-500
            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+    box-shadow: 0 2px 8px rgba(237, 128, 39, 0.25), 0 1px 2px rgba(237, 128, 39, 0.15);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 4px 12px rgba(237, 128, 39, 0.35), 0 2px 4px rgba(237, 128, 39, 0.2);
   }
 
   .btn-secondary {
-    @apply bg-warm-200 text-warm-800 font-semibold px-6 py-3 rounded-xl
-           hover:bg-warm-300 active:scale-[0.98] transition-all duration-150
-           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-warm-200
+    @apply bg-warm-100 text-warm-800 font-semibold px-6 py-3 rounded-xl
+           hover:bg-warm-200 active:scale-[0.98] transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-warm-100
            focus:outline-none focus:ring-2 focus:ring-warm-400 focus:ring-offset-2;
   }
 
@@ -74,8 +84,7 @@ input[type="number"] {
     @apply w-full px-4 py-3 rounded-xl border-2 bg-white
            border-warm-200 text-warm-900 placeholder-warm-400
            focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20
-           transition-all duration-150
-           disabled:bg-warm-100 disabled:cursor-not-allowed;
+           transition-all duration-150 font-body;
   }
 
   .input-error {
@@ -84,15 +93,29 @@ input[type="number"] {
 
   .chip {
     @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-warm-100 text-warm-800
-           font-medium text-sm;
+           font-medium text-sm border border-warm-200/60;
   }
 
   .card {
-    @apply bg-white rounded-2xl shadow-sm border border-warm-100;
+    @apply bg-white rounded-2xl border border-warm-100;
+    box-shadow: 0 1px 3px rgba(104, 51, 40, 0.04), 0 1px 2px rgba(104, 51, 40, 0.06);
   }
 
   .card-hover {
-    @apply hover:shadow-md hover:border-warm-200 transition-all duration-200;
+    @apply transition-all duration-200;
+  }
+
+  .card-hover:hover {
+    box-shadow: 0 4px 12px rgba(104, 51, 40, 0.08), 0 2px 4px rgba(104, 51, 40, 0.04);
+    @apply border-warm-200;
+  }
+
+  .section-label {
+    @apply text-label text-warm-400 uppercase font-display;
+  }
+
+  .stat-value {
+    @apply text-2xl font-extrabold text-primary-600 font-mono tracking-tight;
   }
 }
 

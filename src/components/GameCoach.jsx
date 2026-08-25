@@ -15,12 +15,12 @@ const EMOTION_IMAGES = {
   sad: coachSad,
 }
 
-const EMOTION_COLORS = {
-  default: 'bg-warm-100 border-warm-300 text-warm-800',
-  happy: 'bg-primary-50 border-primary-300 text-primary-800',
-  laugh: 'bg-yellow-50 border-yellow-300 text-yellow-800',
-  shocked: 'bg-red-50 border-red-300 text-red-800',
-  sad: 'bg-blue-50 border-blue-300 text-blue-800',
+const BUBBLE_STYLES = {
+  default: { bg: '#faf5f0', border: '#ebb7a3', text: '#683328' },
+  happy: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af' },
+  laugh: { bg: '#fefce8', border: '#fde047', text: '#854d0e' },
+  shocked: { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b' },
+  sad: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af' },
 }
 
 /**
@@ -59,48 +59,53 @@ export function GameCoach({ comment, emotion = 'default', fadeAfterMs = 5000, pe
     }
   }, [bubbleVisible, permanent])
 
+  const bubbleStyle = BUBBLE_STYLES[currentEmotion] || BUBBLE_STYLES.default
+
+  const Bubble = () => (
+    <motion.div
+      className="relative px-3.5 py-2.5 rounded-2xl mb-1.5"
+      style={{
+        backgroundColor: bubbleStyle.bg,
+        border: `1.5px solid ${bubbleStyle.border}`,
+      }}
+      initial={{ opacity: 0, y: 8, scale: 0.92 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -4, scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+    >
+      <p className="text-xs font-medium leading-relaxed text-center" style={{ color: bubbleStyle.text }}>
+        {currentComment}
+      </p>
+      <div
+        className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 border-b-[1.5px] border-r-[1.5px]"
+        style={{ borderColor: bubbleStyle.border, backgroundColor: bubbleStyle.bg }}
+      />
+    </motion.div>
+  )
+
+  const Character = ({ size = 'w-[110px] h-[110px]' }) => (
+    <AnimatePresence mode="wait">
+      <motion.img
+        key={currentEmotion}
+        src={EMOTION_IMAGES[currentEmotion] || EMOTION_IMAGES.default}
+        alt="Mr. Slow"
+        className={`${size} object-contain drop-shadow-sm`}
+        initial={{ scale: 0.88, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.92, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      />
+    </AnimatePresence>
+  )
+
   // Permanent mode: always render the character
   if (permanent) {
     return (
-      <div className="flex flex-col items-center max-w-[220px]">
-        {/* Speech Bubble — fades in/out */}
+      <div className="flex flex-col items-center max-w-[200px]">
         <AnimatePresence>
-          {bubbleVisible && currentComment && (
-            <motion.div
-              className="relative px-3 py-2 rounded-2xl border-2 shadow-sm mb-1"
-              style={{
-                backgroundColor: EMOTION_COLORS[currentEmotion]?.includes('primary') ? '#eff6ff'
-                  : EMOTION_COLORS[currentEmotion]?.includes('yellow') ? '#fefce8'
-                  : EMOTION_COLORS[currentEmotion]?.includes('red') ? '#fef2f2'
-                  : EMOTION_COLORS[currentEmotion]?.includes('blue') ? '#eff6ff'
-                  : '#faf5f0',
-              }}
-              initial={{ opacity: 0, y: 10, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -5, scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-            >
-              <p className="text-xs font-medium leading-relaxed text-center text-warm-800">
-                {currentComment}
-              </p>
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-b-2 border-r-2 border-warm-300 bg-[#faf5f0]" />
-            </motion.div>
-          )}
+          {bubbleVisible && currentComment && <Bubble />}
         </AnimatePresence>
-
-        {/* Character — always visible, swaps emotion */}
-        <AnimatePresence mode="wait">
-          <motion.img
-            key={currentEmotion}
-            src={EMOTION_IMAGES[currentEmotion] || EMOTION_IMAGES.default}
-            alt="Mr. Slow"
-            className="w-[120px] h-[120px] object-contain"
-            initial={{ scale: 0.85, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-          />
-        </AnimatePresence>
+        <Character />
       </div>
     )
   }
@@ -110,40 +115,14 @@ export function GameCoach({ comment, emotion = 'default', fadeAfterMs = 5000, pe
     <AnimatePresence>
       {bubbleVisible && currentComment && (
         <motion.div
-          className="flex flex-col items-center max-w-[220px]"
-          initial={{ opacity: 0, y: 20, scale: 0.8 }}
+          className="flex flex-col items-center max-w-[200px]"
+          initial={{ opacity: 0, y: 16, scale: 0.85 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, scale: 0.9 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          exit={{ opacity: 0, y: 8, scale: 0.92 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 22 }}
         >
-          <motion.div
-            className="relative px-3 py-2 rounded-2xl border-2 shadow-sm mb-1"
-            style={{
-              backgroundColor: EMOTION_COLORS[currentEmotion]?.includes('primary') ? '#eff6ff'
-                : EMOTION_COLORS[currentEmotion]?.includes('yellow') ? '#fefce8'
-                : EMOTION_COLORS[currentEmotion]?.includes('red') ? '#fef2f2'
-                : EMOTION_COLORS[currentEmotion]?.includes('blue') ? '#eff6ff'
-                : '#faf5f0',
-            }}
-          >
-            <p className="text-xs font-medium leading-relaxed text-center text-warm-800">
-              {currentComment}
-            </p>
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-b-2 border-r-2 border-warm-300 bg-[#faf5f0]" />
-          </motion.div>
-
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={currentEmotion}
-              src={EMOTION_IMAGES[currentEmotion] || EMOTION_IMAGES.default}
-              alt="Mr. Slow"
-              className="w-[120px] h-[120px] object-contain"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-            />
-          </AnimatePresence>
+          <Bubble />
+          <Character />
         </motion.div>
       )}
     </AnimatePresence>

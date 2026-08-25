@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
@@ -66,7 +66,13 @@ export function LoginScreen() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-warm-50">
-        <div className="animate-pulse-soft text-4xl">🎲</div>
+        <motion.div
+          animate={{ y: [0, -6, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          className="text-5xl"
+        >
+          🎲
+        </motion.div>
       </div>
     )
   }
@@ -79,8 +85,10 @@ export function LoginScreen() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="text-5xl mb-4">⚙️</div>
-          <h1 className="text-xl font-bold text-warm-900 mb-2">Firebase Not Configured</h1>
+          <div className="w-16 h-16 rounded-2xl bg-warm-100 flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">⚙️</span>
+          </div>
+          <h1 className="font-display text-display-sm text-warm-900 mb-2">Firebase Not Configured</h1>
           <p className="text-warm-500 text-sm mb-4">
             Create a <code className="bg-warm-100 px-1.5 py-0.5 rounded text-xs font-mono">.env</code> file with your Firebase config:
           </p>
@@ -101,29 +109,35 @@ VITE_FIREBASE_APP_ID=...`}
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-warm-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-warm-50 px-4 relative overflow-hidden">
+      {/* Decorative background blobs */}
+      <div className="absolute top-[-10%] right-[-10%] w-72 h-72 bg-primary-200/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-warm-200/40 rounded-full blur-3xl pointer-events-none" />
+
       <motion.div
-        className="card p-8 w-full max-w-sm text-center"
-        initial={{ opacity: 0, y: 20 }}
+        className="card p-8 w-full max-w-sm text-center relative"
+        style={{ boxShadow: '0 8px 24px rgba(104, 51, 40, 0.10), 0 2px 8px rgba(104, 51, 40, 0.06)' }}
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
         <motion.div
-          className="text-6xl mb-4"
-          animate={{ y: [0, -5, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          className="text-6xl mb-5"
+          animate={{ y: [0, -5, 0], rotate: [0, 3, -3, 0] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
         >
           🎲
         </motion.div>
-        <h1 className="text-2xl font-extrabold text-warm-900 mb-1">Board Game Scorekeeper</h1>
-        <p className="text-warm-500 text-sm mb-8">Track scores, crown winners</p>
+        <h1 className="font-display text-display-md text-warm-900 mb-1">Board Game Scorekeeper</h1>
+        <p className="text-warm-400 text-sm mb-8">Track scores, crown winners</p>
 
         {!user && (
           <>
             <motion.button
               whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: 1.01 }}
               onClick={handleGoogleLogin}
-              className="w-full flex items-center justify-center gap-3 bg-white border-2 border-warm-200 hover:border-warm-300 text-warm-800 font-semibold px-6 py-3 rounded-xl transition-all duration-150 hover:shadow-md"
+              className="w-full flex items-center justify-center gap-3 bg-white border-2 border-warm-200 hover:border-warm-300 text-warm-800 font-semibold px-6 py-3.5 rounded-xl transition-all duration-200 hover:shadow-card-hover"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -134,7 +148,13 @@ VITE_FIREBASE_APP_ID=...`}
               Sign in with Google
             </motion.button>
             {submitError && (
-              <p className="text-danger-500 text-sm mt-3">{submitError}</p>
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-danger-500 text-sm mt-3"
+              >
+                {submitError}
+              </motion.p>
             )}
           </>
         )}
@@ -147,7 +167,7 @@ VITE_FIREBASE_APP_ID=...`}
             className="space-y-4"
           >
             <div className="text-left">
-              <label className="block text-sm font-medium text-warm-700 mb-1">
+              <label className="block text-label text-warm-500 uppercase mb-2 font-display">
                 Choose your username
               </label>
               <div className="relative">
@@ -180,10 +200,10 @@ VITE_FIREBASE_APP_ID=...`}
                 </div>
               </div>
               {usernameError && (
-                <p className="text-danger-500 text-xs mt-1">{usernameError}</p>
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-danger-500 text-xs mt-1.5">{usernameError}</motion.p>
               )}
               {usernameAvailable && !checkingUsername && (
-                <p className="text-green-600 text-xs mt-1">Username available!</p>
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-green-600 text-xs mt-1.5">Username available!</motion.p>
               )}
             </div>
             <motion.button
@@ -203,22 +223,24 @@ VITE_FIREBASE_APP_ID=...`}
               ) : 'Claim Username'}
             </motion.button>
             {submitError && (
-              <p className="text-danger-500 text-sm">{submitError}</p>
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-danger-500 text-sm">{submitError}</motion.p>
             )}
           </motion.form>
         )}
 
         {showStartButton && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
             className="space-y-3"
           >
-            <p className="text-warm-600 mb-1 text-sm">
-              Welcome, <span className="font-bold text-primary-600">{username}</span>!
+            <p className="text-warm-500 text-sm">
+              Welcome, <span className="font-bold text-primary-600">{username}</span>
             </p>
             <motion.button
               whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: 1.01 }}
               onClick={() => navigate('/name-input')}
               className="btn-primary w-full text-lg"
             >

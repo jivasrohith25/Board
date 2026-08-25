@@ -48,35 +48,38 @@ export function ToastProvider({ children }) {
 }
 
 function Toast({ toast, onClose }) {
-  const bgColors = {
-    info: 'bg-primary-500',
-    success: 'bg-green-500',
-    error: 'bg-danger-500',
+  const icons = {
+    info: '💡',
+    success: '✓',
+    error: '✕',
   }
-  const iconColors = {
-    info: 'text-white',
-    success: 'text-white',
-    error: 'text-white',
+  const styles = {
+    info: 'bg-warm-800 text-white',
+    success: 'bg-green-600 text-white',
+    error: 'bg-danger-600 text-white',
   }
 
   return (
-    <div className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg min-w-[280px] max-w-md animate-slide-up ${bgColors[toast.type]}`}>
-      <span className="flex-1 text-white text-sm font-medium">{toast.message}</span>
-      {toast.action && (
+    <div className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl min-w-[260px] max-w-md animate-slide-up ${styles[toast.type]}`}
+      style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}
+    >
+      <span className="flex-shrink-0 text-sm font-bold">{icons[toast.type]}</span>
+      <span className="flex-1 text-sm font-medium leading-snug">{toast.message}</span>
+      {toast.label && toast.action && (
         <button
           onClick={() => { toast.action(); onClose(toast.id); }}
-          className="text-white font-semibold underline hover:no-underline whitespace-nowrap"
+          className="text-white font-semibold underline text-xs hover:no-underline whitespace-nowrap flex-shrink-0"
         >
-          {toast.action.label}
+          {toast.label}
         </button>
       )}
       <button
         onClick={() => onClose(toast.id)}
-        className="text-white/80 hover:text-white transition-opacity p-1"
+        className="text-white/70 hover:text-white transition-colors p-0.5 flex-shrink-0"
         aria-label="Dismiss"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
     </div>

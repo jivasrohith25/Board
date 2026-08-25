@@ -45,8 +45,21 @@ export default {
         }
       },
       fontFamily: {
-        display: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Outfit', 'system-ui', 'sans-serif'],
+        body: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
+      },
+      fontSize: {
+        'display-lg': ['2.5rem', { lineHeight: '1.1', fontWeight: '800', letterSpacing: '-0.02em' }],
+        'display-md': ['1.75rem', { lineHeight: '1.2', fontWeight: '700', letterSpacing: '-0.015em' }],
+        'display-sm': ['1.25rem', { lineHeight: '1.3', fontWeight: '600', letterSpacing: '-0.01em' }],
+        'label': ['0.6875rem', { lineHeight: '1.4', fontWeight: '600', letterSpacing: '0.06em' }],
+      },
+      boxShadow: {
+        'card': '0 1px 3px rgba(104, 51, 40, 0.04), 0 1px 2px rgba(104, 51, 40, 0.06)',
+        'card-hover': '0 4px 12px rgba(104, 51, 40, 0.08), 0 2px 4px rgba(104, 51, 40, 0.04)',
+        'elevated': '0 8px 24px rgba(104, 51, 40, 0.10), 0 2px 8px rgba(104, 51, 40, 0.06)',
+        'glow-primary': '0 0 20px rgba(237, 128, 39, 0.15)',
       },
       animation: {
         'slide-up': 'slideUp 0.3s ease-out',
