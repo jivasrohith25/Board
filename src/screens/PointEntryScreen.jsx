@@ -744,9 +744,9 @@ export function PointEntryScreen() {
         </div>
       </Modal>
 
-      {/* Coach */}
+      {/* Coach — always visible */}
       <div className="fixed bottom-4 left-4 z-30">
-        <GameCoach comment={coachComment} emotion={coachEmotion} fadeAfterMs={5000} />
+        <GameCoach comment={coachComment} emotion={coachEmotion} fadeAfterMs={5000} permanent />
       </div>
 
       {/* End Game Modal */}
