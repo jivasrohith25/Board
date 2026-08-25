@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { v4 as uuidv4 } from 'uuid'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db, useAuth } from '../contexts/AuthContext'
+import { getAvatarUrl } from '../config/avatars'
 
 const STORAGE_KEY = 'bgsk_draft'
 
@@ -20,7 +21,7 @@ function saveDraft(data) {
 }
 
 export function NameInputScreen() {
-  const { user, username, logout } = useAuth()
+  const { user, username, avatar, logout } = useAuth()
   const navigate = useNavigate()
   const draft = loadDraft()
 
@@ -123,6 +124,20 @@ export function NameInputScreen() {
             >
               <span className="text-xl">📜</span>
               <span className="text-[10px] font-medium text-warm-500">History</span>
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => navigate('/profile')}
+              className="w-9 h-9 rounded-full overflow-hidden border-2 border-warm-200 hover:border-primary-400 transition-colors flex-shrink-0"
+              title="Profile"
+            >
+              {avatar ? (
+                <img src={getAvatarUrl(avatar)} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-primary-100 flex items-center justify-center text-xs font-bold text-primary-600">
+                  {username?.[0]?.toUpperCase() || '?'}
+                </div>
+              )}
             </motion.button>
             <button onClick={logout} className="btn-ghost text-sm">
               Logout

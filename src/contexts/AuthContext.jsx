@@ -55,6 +55,7 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [username, setUsername] = useState(null)
+  const [avatar, setAvatarState] = useState(null)
   const [loading, setLoading] = useState(true)
   const [checkingUsername, setCheckingUsername] = useState(false)
   const [usernameError, setUsernameError] = useState(null)
@@ -71,6 +72,7 @@ export function AuthProvider({ children }) {
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
         if (userDoc.exists()) {
           setUsername(userDoc.data().username)
+          setAvatarState(userDoc.data().avatar || null)
         }
       } else {
         setUsername(null)
@@ -158,6 +160,16 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const setAvatar = async (avatarId) => {
+    try {
+      await setDoc(doc(db, 'users', user.uid), { avatar: avatarId }, { merge: true })
+      setAvatarState(avatarId)
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  }
+
   const logout = async () => {
     await signOut(auth)
   }
@@ -166,6 +178,8 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user,
       username,
+      avatar,
+      setAvatar,
       loading,
       configMissing: !isConfigured,
       checkingUsername,

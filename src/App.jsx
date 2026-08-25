@@ -7,6 +7,7 @@ import { ResultsScreen } from './screens/ResultsScreen'
 import { DicePage } from './screens/DicePage'
 import { HistoryScreen } from './screens/HistoryScreen'
 import { HistoryDetailScreen } from './screens/HistoryDetailScreen'
+import { ProfileScreen } from './screens/ProfileScreen'
 import { LoadingSkeleton } from './components/LoadingSkeleton'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
@@ -63,6 +64,11 @@ export default function App() {
           <Route path="/history/:gameId" element={
             <PrivateRoute>
               <HistoryDetailScreen />
+            </PrivateRoute>
+          } />
+          <Route path="/profile" element={
+            <PrivateRoute>
+              <ProfileScreen />
             </PrivateRoute>
           } />
           <Route path="/" element={<Navigate to="/name-input" replace />} />

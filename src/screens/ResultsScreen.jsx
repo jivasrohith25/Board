@@ -2,26 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import confetti from 'canvas-confetti'
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore'
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../contexts/AuthContext'
 import { useAuth } from '../contexts/AuthContext'
 import { FireworksBackground } from '../components/FireworksBackground'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import { ConfirmModal } from '../components/Modal'
+import { PlayerAvatar } from '../components/PlayerAvatar'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
-function PlayerAvatar({ name, size = 'md' }) {
-  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-  const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm', lg: 'w-14 h-14 text-lg' }
-  return (
-    <div className={`${sizes[size]} rounded-full bg-primary-100 text-primary-700 font-bold flex items-center justify-center`}>
-      {initials}
-    </div>
-  )
-}
-
-// Confetti burst helper
 function burstConfetti() {
   confetti({
     particleCount: 150,
@@ -38,6 +28,12 @@ function burstConfetti() {
   }, 600)
 }
 
+// Bar colors for each player
+const BAR_COLORS = [
+  'bg-primary-500', 'bg-orange-400', 'bg-emerald-400', 'bg-blue-400',
+  'bg-purple-400', 'bg-pink-400', 'bg-yellow-400', 'bg-cyan-400',
+]
+
 export function ResultsScreen() {
   const { gameId } = useParams()
   const navigate = useNavigate()
@@ -51,6 +47,7 @@ export function ResultsScreen() {
   const [roundData, setRoundData] = useState([])
   const [showHomeConfirm, setShowHomeConfirm] = useState(false)
   const [showHistoryConfirm, setShowHistoryConfirm] = useState(false)
+  const [playerAvatars, setPlayerAvatars] = useState({})
 
   // Get archivedGameId from navigation state or URL
   useEffect(() => {
@@ -67,7 +64,6 @@ export function ResultsScreen() {
   useEffect(() => {
     if (!loading && game) {
       burstConfetti()
-      // Repeating celebration bursts
       const t1 = setTimeout(() => {
         confetti({ particleCount: 40, angle: 45, spread: 40, origin: { x: 0.1, y: 0.5 } })
         confetti({ particleCount: 40, angle: 135, spread: 40, origin: { x: 0.9, y: 0.5 } })
@@ -79,6 +75,57 @@ export function ResultsScreen() {
       return () => { clearTimeout(t1); clearTimeout(t2) }
     }
   }, [loading, game])
+
+  // Load avatars for all players by looking up usernames collection
+  const loadAvatars = async (playerNames) => {
+    try {
+      const avatarMap = {}
+      // Query usernames collection to get uid, then look up avatar from users collection
+      const usernameQueries = playerNames.map(name =>
+        getDoc(doc(db, 'usernames', name.toLowerCase()))
+      )
+      const usernameSnaps = await Promise.allSettled(usernameQueries)
+
+      const userDocs = usernameSnaps
+        .filter(s => s.status === 'fulfilled' && s.value.exists())
+        .map(s => getDoc(doc(db, 'users', s.value.data().uid)))
+
+      const userSnaps = await Promise.allSettled(userDocs)
+
+      // We also need to map back from uid to username
+      const uidToUsername = {}
+      usernameSnaps.forEach(s => {
+        if (s.status === 'fulfilled' && s.value.exists()) {
+          const data = s.value.data()
+          uidToUsername[data.uid] = data.id || playerNames.find(
+            n => n.toLowerCase() === (s.value.id || '')
+          )
+        }
+      })
+
+      // Rebuild: query all usernames at once
+      const results = await Promise.allSettled(
+        playerNames.map(async (name) => {
+          const unameSnap = await getDoc(doc(db, 'usernames', name.toLowerCase()))
+          if (!unameSnap.exists()) return { name, avatar: null }
+          const uid = unameSnap.data().uid
+          const userSnap = await getDoc(doc(db, 'users', uid))
+          if (!userSnap.exists()) return { name, avatar: null }
+          return { name, avatar: userSnap.data().avatar || null }
+        })
+      )
+
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && r.value) {
+          avatarMap[r.value.name] = r.value.avatar
+        }
+      })
+
+      setPlayerAvatars(avatarMap)
+    } catch (err) {
+      console.error('Failed to load avatars:', err)
+    }
+  }
 
   const loadGame = async () => {
     try {
@@ -113,6 +160,7 @@ export function ResultsScreen() {
               setArchivedGameId(gameId)
               setArchiving(false)
               setLoading(false)
+              if (data.players) loadAvatars(data.players)
               return
             }
           } catch {}
@@ -142,6 +190,7 @@ export function ResultsScreen() {
       setArchivedGameId(gameId)
       setArchiving(false)
       setLoading(false)
+      loadAvatars(gameData.players)
     } catch (err) {
       console.error('Failed to load results:', err)
       setArchiving(false)
@@ -152,11 +201,11 @@ export function ResultsScreen() {
   const sortedPlayers = useMemo(() => {
     if (!game) return []
     return game.players
-      .map(name => ({ name, score: totalScores[name] || 0 }))
+      .map(name => ({ name, score: totalScores[name] || 0, avatar: playerAvatars[name] || null }))
       .sort((a, b) => b.score - a.score)
-  }, [game, totalScores])
+  }, [game, totalScores, playerAvatars])
 
-  // Analytics computation
+  // Analytics
   const analytics = useMemo(() => {
     if (!game || sortedPlayers.length === 0) return null
     const numRounds = roundData.length
@@ -164,7 +213,6 @@ export function ResultsScreen() {
     const totalPoints = allScores.reduce((a, b) => a + b, 0)
     const avgScore = numRounds > 0 ? (totalPoints / game.players.length).toFixed(1) : 0
 
-    // Biggest lead at any round
     let biggestLead = 0
     let leadLabel = ''
     const runningTotals = {}
@@ -183,20 +231,17 @@ export function ResultsScreen() {
       }
     })
 
-    // Closest game (margin between 1st and 2nd)
     const margin = sortedPlayers.length >= 2
       ? sortedPlayers[0].score - sortedPlayers[1].score
       : sortedPlayers[0]?.score || 0
 
-    // Most consistent (lowest std dev of round scores per player)
     const playerConsistency = game.players.map(p => {
       const pScores = roundData.map(r => r.scores?.[p] || 0)
       const mean = pScores.length > 0 ? pScores.reduce((a, b) => a + b, 0) / pScores.length : 0
       const variance = pScores.length > 0 ? pScores.reduce((a, s) => a + (s - mean) ** 2, 0) / pScores.length : 0
-      return { name: p, stdDev: Math.sqrt(variance).toFixed(1), avg: mean.toFixed(1) }
+      return { name: p, stdDev: Math.sqrt(variance).toFixed(1), avg: mean.toFixed(1), avatar: playerAvatars[p] || null }
     }).sort((a, b) => parseFloat(a.stdDev) - parseFloat(b.stdDev))
 
-    // Highest single round score
     let highestRoundScore = 0
     let highestRoundPlayer = ''
     let highestRoundNum = 0
@@ -210,16 +255,12 @@ export function ResultsScreen() {
       })
     })
 
-    // Comeback king: biggest deficit overcome
     let maxComeback = 0
     let comebackPlayer = ''
-    const playerRanks = {}
-    game.players.forEach(p => playerRanks[p] = [])
     roundData.forEach((round, idx) => {
       Object.entries(round.scores || {}).forEach(([p, s]) => {
         const running = {}
         game.players.forEach(pl => running[pl] = 0)
-        // Recalculate up to this round
         for (let r = 0; r <= idx; r++) {
           Object.entries(roundData[r].scores || {}).forEach(([pl, sc]) => {
             running[pl] = (running[pl] || 0) + sc
@@ -228,7 +269,6 @@ export function ResultsScreen() {
         const sorted = Object.entries(running).sort(([,a],[,b]) => b - a)
         const rank = sorted.findIndex(([n]) => n === p)
         if (rank === 0 && idx > 0) {
-          // Was this player behind before?
           const prevRunning = {}
           game.players.forEach(pl => prevRunning[pl] = 0)
           for (let r = 0; r < idx; r++) {
@@ -250,27 +290,18 @@ export function ResultsScreen() {
     })
 
     return {
-      numRounds,
-      totalPoints,
-      avgScore,
-      biggestLead,
-      leadLabel,
-      margin,
-      playerConsistency,
-      highestRoundScore,
-      highestRoundPlayer,
-      highestRoundNum,
-      maxComeback,
-      comebackPlayer,
+      numRounds, totalPoints, avgScore, biggestLead, leadLabel, margin,
+      playerConsistency, highestRoundScore, highestRoundPlayer, highestRoundNum,
+      maxComeback, comebackPlayer,
     }
-  }, [game, sortedPlayers, roundData, totalScores])
+  }, [game, sortedPlayers, roundData, totalScores, playerAvatars])
 
   if (loading) return <LoadingSkeleton />
 
   const top3 = sortedPlayers.slice(0, 3)
   const rest = sortedPlayers.slice(3)
+  const maxScore = sortedPlayers.length > 0 ? sortedPlayers[0].score : 1
 
-  // Podium order: 2nd, 1st, 3rd
   const podiumOrder = []
   if (top3[1]) podiumOrder.push({ ...top3[1], rank: 2 })
   if (top3[0]) podiumOrder.push({ ...top3[0], rank: 1 })
@@ -311,7 +342,6 @@ export function ResultsScreen() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: podiumDelay[player.rank], ...podiumBounce[player.rank] }}
               >
-                {/* Player info */}
                 <div className="mb-2 text-center">
                   {player.rank === 1 && (
                     <motion.div
@@ -325,7 +355,11 @@ export function ResultsScreen() {
                   {player.rank === 2 && <div className="text-xl mb-1">🥈</div>}
                   {player.rank === 3 && <div className="text-xl mb-1">🥉</div>}
 
-                  <PlayerAvatar name={player.name} size={player.rank === 1 ? 'lg' : 'md'} />
+                  <PlayerAvatar
+                    name={player.name}
+                    avatar={player.avatar}
+                    size={player.rank === 1 ? 'lg' : 'md'}
+                  />
 
                   <p className="font-bold text-warm-900 text-sm truncate max-w-[100px] mt-1">
                     {player.name}
@@ -339,7 +373,6 @@ export function ResultsScreen() {
                     {player.score}
                   </p>
                 </div>
-                {/* Podium block */}
                 <motion.div
                   className={`w-full ${podiumHeights[player.rank]} ${podiumColors[player.rank]} rounded-t-xl ${
                     player.rank === 1 ? 'shadow-lg shadow-primary-300/40' : ''
@@ -382,7 +415,7 @@ export function ResultsScreen() {
                     <span className="w-8 text-center text-warm-400 font-bold text-sm">
                       #{i + 4}
                     </span>
-                    <PlayerAvatar name={player.name} size="sm" />
+                    <PlayerAvatar name={player.name} avatar={player.avatar} size="sm" />
                     <span className="flex-1 font-medium text-warm-900">
                       {player.name}
                       {isTied && (
@@ -398,6 +431,48 @@ export function ResultsScreen() {
             </div>
           </motion.div>
         )}
+
+        {/* Score Bar Chart with Avatars */}
+        <motion.div
+          className="card p-4 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.65 }}
+        >
+          <h3 className="text-sm font-bold text-warm-500 uppercase tracking-wider mb-4">
+            📊 Score Overview
+          </h3>
+          <div className="space-y-3">
+            {sortedPlayers.map((player, i) => {
+              const pct = maxScore > 0 ? (player.score / maxScore) * 100 : 0
+              return (
+                <motion.div
+                  key={player.name}
+                  className="flex items-center gap-3"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.7 + i * 0.08 }}
+                >
+                  <PlayerAvatar name={player.name} avatar={player.avatar} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-warm-800 truncate">{player.name}</span>
+                      <span className="text-xs font-mono font-bold text-primary-600 ml-2">{player.score}</span>
+                    </div>
+                    <div className="w-full h-4 bg-warm-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]}`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(pct, 2)}%` }}
+                        transition={{ delay: 0.8 + i * 0.1, duration: 0.6, ease: 'easeOut' }}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            })}
+          </div>
+        </motion.div>
 
         {/* Game Analytics */}
         {analytics && (
@@ -469,16 +544,17 @@ export function ResultsScreen() {
               )}
             </div>
 
-            {/* Player Breakdown */}
+            {/* Player Averages with avatars */}
             {analytics.playerConsistency.length > 0 && (
               <div className="mt-4 pt-3 border-t border-warm-100">
                 <p className="text-xs font-bold text-warm-400 uppercase tracking-wider mb-2">Player Averages</p>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {analytics.playerConsistency.map((p, i) => (
-                    <div key={p.name} className="flex items-center gap-2 text-xs">
-                      <span className="w-5 text-center text-warm-400 font-bold">#{i + 1}</span>
-                      <span className="flex-1 font-medium text-warm-800">{p.name}</span>
-                      <span className="font-mono text-warm-600">avg {p.avg}</span>
+                    <div key={p.name} className="flex items-center gap-2.5">
+                      <span className="w-5 text-center text-warm-400 font-bold text-xs">#{i + 1}</span>
+                      <PlayerAvatar name={p.name} avatar={p.avatar} size="xs" />
+                      <span className="flex-1 font-medium text-warm-800 text-xs">{p.name}</span>
+                      <span className="font-mono text-warm-600 text-xs">avg {p.avg}</span>
                     </div>
                   ))}
                 </div>

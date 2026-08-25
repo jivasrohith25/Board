@@ -136,6 +136,16 @@ export function PointEntryScreen() {
     setUnrecognizedNames([])
   }
 
+  // Auto-fade voice popups after 3 seconds
+  useEffect(() => {
+    if (Object.keys(pendingScores).length === 0 && unrecognizedNames.length === 0) return
+    const timer = setTimeout(() => {
+      setPendingScores({})
+      setUnrecognizedNames([])
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [pendingScores, unrecognizedNames])
+
   useEffect(() => {
     const on = () => setIsOnline(true)
     const off = () => setIsOnline(false)
