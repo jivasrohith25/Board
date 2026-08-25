@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import firebase_admin
-from google.cloud.firestore_v1.base import ArrayUnion
+from google.cloud.firestore_v1 import ArrayUnion
 from firebase_admin import auth, firestore
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
