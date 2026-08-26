@@ -648,34 +648,45 @@ async def coach_comment(
             contents=prompt,
             config=COACH_GEN_CONFIG,
         )
-        # response.text raises IndexError if no candidates (safety block, etc.)
-        raw = (response.text or "").strip()
-        if not raw:
-            logger.warning("Coach comment: empty response text from Gemini")
-            raise ValueError("empty Gemini response")
 
-        parsed = None
-        # 1) Try parsing raw as JSON directly (response_mime_type should ensure this)
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError:
-            pass
-
-        # 2) Fallback: extract JSON object from text
-        if parsed is None:
-            json_match = re.search(r'\{.*?\}', raw, re.DOTALL)
-            if json_match:
-                try:
-                    parsed = json.loads(json_match.group())
-                except json.JSONDecodeError:
-                    pass
-
-        if parsed and "comment" in parsed:
-            comment = str(parsed["comment"])[:200]
-            # Emotion always from backend — LLM output ignored
+        # 1) Use SDK-parsed response (response_schema gives us a CoachResponse)
+        parsed_obj = getattr(response, "parsed", None)
+        if parsed_obj is not None and hasattr(parsed_obj, "comment"):
+            comment = str(parsed_obj.comment)[:200]
         else:
-            # Gemini returned non-JSON; use raw text as comment
-            comment = raw.strip('"').strip("'")[:150]
+            # 2) Fall back to text parsing
+            raw = (getattr(response, "text", None) or "").strip()
+            if not raw:
+                logger.warning("Coach comment: empty response from Gemini")
+                raise ValueError("empty Gemini response")
+
+            # Strip markdown code fences if present
+            fenced = re.match(r"^```(?:json)?\s*\n?(.*?)\n?\s*```$", raw, re.DOTALL)
+            if fenced:
+                raw = fenced.group(1).strip()
+
+            parsed = None
+            try:
+                parsed = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+            if parsed is None:
+                json_match = re.search(r'\{.*?\}', raw, re.DOTALL)
+                if json_match:
+                    try:
+                        parsed = json.loads(json_match.group())
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+
+            if isinstance(parsed, dict) and "comment" in parsed:
+                comment = str(parsed["comment"])[:200]
+            else:
+                # Never use raw preamble text like "Here is the JSON" as comment
+                logger.warning(
+                    "Could not parse coach comment from Gemini output: %s",
+                    raw[:200],
+                )
 
         logger.info(
             "Coach comment generated: emotion=%s round=%d",
@@ -772,29 +783,43 @@ async def coach_finale(
             contents=prompt,
             config=COACH_GEN_CONFIG,
         )
-        raw = (response.text or "").strip()
-        if not raw:
-            logger.warning("Coach finale: empty response text from Gemini")
-            raise ValueError("empty Gemini response")
 
-        parsed = None
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError:
-            pass
-
-        if parsed is None:
-            json_match = re.search(r'\{.*?\}', raw, re.DOTALL)
-            if json_match:
-                try:
-                    parsed = json.loads(json_match.group())
-                except json.JSONDecodeError:
-                    pass
-
-        if parsed and "comment" in parsed:
-            comment = str(parsed["comment"])[:250]
+        # 1) Use SDK-parsed response
+        parsed_obj = getattr(response, "parsed", None)
+        if parsed_obj is not None and hasattr(parsed_obj, "comment"):
+            comment = str(parsed_obj.comment)[:250]
         else:
-            comment = raw.strip('"').strip("'")[:200]
+            # 2) Fall back to text parsing
+            raw = (getattr(response, "text", None) or "").strip()
+            if not raw:
+                logger.warning("Coach finale: empty response from Gemini")
+                raise ValueError("empty Gemini response")
+
+            fenced = re.match(r"^```(?:json)?\s*\n?(.*?)\n?\s*```$", raw, re.DOTALL)
+            if fenced:
+                raw = fenced.group(1).strip()
+
+            parsed = None
+            try:
+                parsed = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+            if parsed is None:
+                json_match = re.search(r'\{.*?\}', raw, re.DOTALL)
+                if json_match:
+                    try:
+                        parsed = json.loads(json_match.group())
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+
+            if isinstance(parsed, dict) and "comment" in parsed:
+                comment = str(parsed["comment"])[:250]
+            else:
+                logger.warning(
+                    "Could not parse coach finale from Gemini output: %s",
+                    raw[:200],
+                )
 
         logger.info(
             "Coach finale generated: emotion=%s winner=%s",
