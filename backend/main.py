@@ -86,7 +86,7 @@ except Exception as e:
 # Coach generation config — plain text, capped for latency
 COACH_GEN_CONFIG = types.GenerateContentConfig(
     temperature=0.9,
-    max_output_tokens=100,
+    max_output_tokens=1000,
 ) if COACH_ENABLED else None
 
 # ---------------------------------------------------------------------------
