@@ -83,10 +83,11 @@ except Exception as e:
     _gemini_client = None
     _gemini_model = None
 
-# Coach generation config — plain text, capped for latency
+# Coach generation config — zero thinking, fast style-only generation
 COACH_GEN_CONFIG = types.GenerateContentConfig(
-    temperature=0.9,
-    max_output_tokens=1000,
+    temperature=1.1,
+    max_output_tokens=80,
+    thinking_config=types.ThinkingConfig(thinking_budget=0),
 ) if COACH_ENABLED else None
 
 # ---------------------------------------------------------------------------
@@ -624,24 +625,35 @@ async def coach_comment(
     else:
         backend_emotion = "default"
 
-    prompt = (
-        f"You are Mr. Slow, a dramatic and funny board-game coach.\n\n"
-        f"Favorite player: {favorite}\n"
-        f"Last place: {last_place}\n"
-        f"Previously teased players: {json.dumps(teased)}\n\n"
-        f"Round: {req.round_number}\n"
-        f"Round scores: {json.dumps(req.scores)}\n"
-        f"Total scores: {json.dumps(req.totals)}\n\n"
-        f"Write a specific, entertaining coach comment about what just happened.\n"
-        f"The comment should be 1-2 sentences and approximately 20-35 words.\n"
-        f"Mention player names when useful.\n"
-        f"Do not use generic comments such as 'Great round, everyone!'.\n"
-        f"Do not explain your answer.\n\n"
-        f"Return ONLY valid JSON in exactly this format:\n"
-        f'{{"comment":"your comment here","emotion":"{backend_emotion}"}}\n\n'
-        f"Respond with ONLY the raw JSON object. No markdown code fences, no "
-        f"explanation, no preamble text. Your entire response must start with {{ and end with }}."
-    )
+    # --- Pick ONE focus player for this comment ---
+    prev_totals = game_data.get("round_totals", {})
+    if req.round_number <= 1 or not prev_totals:
+        # First round — highlight whoever had the biggest single-round score
+        focus_player = max(req.scores, key=req.scores.get) if req.scores else favorite
+    else:
+        deltas = {p: req.totals.get(p, 0) - prev_totals.get(p, 0) for p in req.totals}
+        best_delta = max(deltas.values()) if deltas else 0
+        worst_delta = min(deltas.values()) if deltas else 0
+        if abs(best_delta) >= abs(worst_delta):
+            focus_player = max(deltas, key=deltas.get)
+        else:
+            focus_player = min(deltas, key=deltas.get)
+
+    focus_player_round = req.scores.get(focus_player, 0)
+    focus_player_total = req.totals.get(focus_player, 0)
+
+    # --- Recent comments for variety ---
+    recent_comments = game_data.get("recent_comments", [])
+
+    prompt = f"""You're Mr. Slow, a sharp, funny board game commentator — think a chess.com post-game AI coach with an attitude.
+
+Your favorite player is {favorite}, you're openly biased toward them.
+
+Focus this ONE comment on {focus_player} specifically (their round: {focus_player_round}, running total: {focus_player_total}).
+Keep it under 15 words, punchy, conversational, like a quick aside — not a full recap.
+Avoid repeating these recent comments: {recent_comments}.
+
+JSON only, no markdown, no preamble: {{"comment": "...", "emotion": "{backend_emotion}"}}"""
 
     comment = "Great round, everyone! 🎲"
     emotion = backend_emotion
@@ -690,6 +702,13 @@ async def coach_comment(
             comment,
         )
 
+        # Fire-and-forget: store comment for variety tracking
+        try:
+            updated = (game_data.get("recent_comments") or []) + [comment]
+            game_ref.update({"recent_comments": updated[-3:]})
+        except Exception as e:
+            logger.error("Failed to update recent_comments: %s", e)
+
     except Exception as e:
         logger.error(
             "Coach comment generation failed for game=%s round=%d: %s",
@@ -733,7 +752,8 @@ async def coach_finale(
         }
 
     db = firestore.client()
-    game_doc = db.collection("games").document(req.game_id).get()
+    game_ref = db.collection("games").document(req.game_id)
+    game_doc = game_ref.get()
     if not game_doc.exists:
         raise HTTPException(status_code=404, detail="Game not found")
     if game_doc.to_dict().get("createdBy") != user["uid"]:
@@ -765,20 +785,18 @@ async def coach_finale(
             f"but you're gracious — maybe a tiny tear."
         )
 
-    prompt = (
-        f"You are Mr. Slow, a dramatic and funny board-game coach.\n\n"
-        f"{scenario}\n\n"
-        f"Final scores: {json.dumps(req.final_scores)}\n\n"
-        f"Write a specific, entertaining coach comment about the final result.\n"
-        f"The comment should be 1-2 sentences and approximately 20-35 words.\n"
-        f"Mention player names when useful.\n"
-        f"Do not use generic comments.\n"
-        f"Do not explain your answer.\n\n"
-        f"Return ONLY valid JSON in exactly this format:\n"
-        f'{{"comment":"your comment here","emotion":"{backend_emotion}"}}\n\n'
-        f"Respond with ONLY the raw JSON object. No markdown code fences, no "
-        f"explanation, no preamble text. Your entire response must start with {{ and end with }}."
-    )
+    # --- Recent comments for variety ---
+    recent_comments = game_data.get("recent_comments", [])
+
+    prompt = f"""You're Mr. Slow, a sharp, funny board game commentator — think a chess.com post-game AI coach with an attitude.
+
+{scenario}
+
+Focus this ONE comment on {req.winner} specifically (final score: {req.final_scores.get(req.winner, 0)}).
+Keep it under 15 words, punchy, conversational, like a quick aside — not a full recap.
+Avoid repeating these recent comments: {recent_comments}.
+
+JSON only, no markdown, no preamble: {{"comment": "...", "emotion": "{backend_emotion}"}}"""
 
     comment = "What a game! Congratulations! 🏆"
     emotion = backend_emotion
@@ -825,6 +843,13 @@ async def coach_finale(
             req.winner,
             comment,
         )
+
+        # Fire-and-forget: store comment for variety tracking
+        try:
+            updated = (game_data.get("recent_comments") or []) + [comment]
+            game_ref.update({"recent_comments": updated[-3:]})
+        except Exception as e:
+            logger.error("Failed to update recent_comments: %s", e)
 
     except Exception as e:
         logger.error(
