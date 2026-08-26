@@ -102,3 +102,9 @@ echo "✅ Deployment complete!"
 echo "   Backend:  ${BACKEND_URL}"
 echo "   Frontend: https://${PROJECT_ID}.web.app"
 echo "════════════════════════════════════════════"
+echo ""
+echo "📋 Recent backend logs (last 100 lines):"
+gcloud run services logs read bgsk-backend \
+  --region="${REGION}" \
+  --project="${PROJECT_ID}" \
+  --limit=100

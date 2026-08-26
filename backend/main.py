@@ -651,6 +651,12 @@ async def coach_comment(
             config=COACH_GEN_CONFIG,
         )
 
+        print("===== GEMINI RAW RESPONSE =====")
+        print(response)
+        print("===== GEMINI TEXT =====")
+        print(response.text)
+        print("================================")
+
         raw = (response.text or "").strip()
         if not raw:
             raise ValueError("empty Gemini response")
@@ -779,6 +785,12 @@ async def coach_finale(
             contents=prompt,
             config=COACH_GEN_CONFIG,
         )
+
+        print("===== GEMINI RAW RESPONSE =====")
+        print(response)
+        print("===== GEMINI TEXT =====")
+        print(response.text)
+        print("================================")
 
         raw = (response.text or "").strip()
         if not raw:
