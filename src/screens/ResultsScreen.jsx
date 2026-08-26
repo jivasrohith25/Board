@@ -116,9 +116,12 @@ export function ResultsScreen() {
               winner,
               final_scores: totalScores,
             }),
-            signal: AbortSignal.timeout(4000),
+            signal: AbortSignal.timeout(10000),
           })
-            .then(r => r.json())
+            .then(r => {
+              if (!r.ok) throw new Error(`Coach finale API ${r.status}`)
+              return r.json()
+            })
             .then(data => {
               if (data.comment) {
                 setCoachComment(data.comment)
@@ -126,7 +129,8 @@ export function ResultsScreen() {
               }
               setCoachTyping(false)
             })
-            .catch(() => {
+            .catch(err => {
+              console.warn('Coach finale failed:', err?.message || err)
               setCoachTyping(false)
             })
         }).catch(() => {

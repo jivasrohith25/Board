@@ -21,6 +21,7 @@ gcloud services enable \
   storage.googleapis.com \
   secretmanager.googleapis.com \
   iam.googleapis.com \
+  aiplatform.googleapis.com \
   --project="${PROJECT_ID}"
 
 # ─── 2. Create Cloud Storage bucket with versioning ─────────────
@@ -44,6 +45,13 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --condition=None \
   --quiet
 
+# Vertex AI User for Gemini model access
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role="roles/aiplatform.user" \
+  --condition=None \
+  --quiet
+
 # ─── 4. Deploy Firestore rules ──────────────────────────────────
 echo "🔒 Deploying Firestore security rules..."
 firebase deploy --only firestore:rules --project="${PROJECT_ID}"
@@ -61,12 +69,12 @@ gcloud run deploy "${SERVICE_NAME}" \
   --service-account="${SERVICE_ACCOUNT}" \
   --platform=managed \
   --allow-unauthenticated \
-  --set-env-vars="GCS_BUCKET=${BUCKET_NAME}" \
+  --set-env-vars="GCS_BUCKET=${BUCKET_NAME},GCP_PROJECT_ID=${PROJECT_ID},GCP_LOCATION=${REGION},ALLOWED_ORIGINS=https://${PROJECT_ID}.web.app,http://localhost:5173,http://localhost:3000" \
   --memory=512Mi \
   --cpu=1 \
   --min-instances=1 \
   --max-instances=10 \
-  --timeout=60
+  --timeout=120
 
 BACKEND_URL=$(gcloud run services describe "${SERVICE_NAME}" \
   --region="${REGION}" \

@@ -301,9 +301,12 @@ export function PointEntryScreen() {
         scores: roundScores,
         totals: newTotalsForCoach,
       }),
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(10000),
     })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`Coach API ${r.status}`)
+        return r.json()
+      })
       .then(data => {
         if (data.comment) {
           setCoachComment(data.comment)
@@ -311,7 +314,8 @@ export function PointEntryScreen() {
         }
         setCoachTyping(false)
       })
-      .catch(() => {
+      .catch(err => {
+        console.warn('Coach comment failed:', err?.message || err)
         setCoachTyping(false)
       })
 

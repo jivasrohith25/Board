@@ -25,7 +25,11 @@ from pydantic import BaseModel
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger("bgsk")
 
 # ---------------------------------------------------------------------------
 # Firebase Admin init
@@ -42,22 +46,46 @@ BUCKET_NAME = os.environ.get("GCS_BUCKET", "bgsk-game-history")
 # ---------------------------------------------------------------------------
 # Vertex AI — Game Coach
 # ---------------------------------------------------------------------------
+COACH_ENABLED = False
+coach_model = None
+
 try:
     import vertexai
-    from vertexai.generative_models import GenerativeModel
+    from vertexai.generative_models import GenerativeModel, GenerationConfig
 
-    GCP_PROJECT = os.environ.get("GCP_PROJECT_ID", os.environ.get("GOOGLE_CLOUD_PROJECT", ""))
-    vertexai.init(project=GCP_PROJECT, location="us-central1")
-    # Use flash-lite for lower latency; cap output at 60 tokens
-    coach_model = GenerativeModel("gemini-2.0-flash-lite")
-    COACH_ENABLED = bool(GCP_PROJECT)
+    GCP_PROJECT = os.environ.get(
+        "GCP_PROJECT_ID",
+        os.environ.get("GOOGLE_CLOUD_PROJECT", ""),
+    )
+    GCP_LOCATION = os.environ.get("GCP_LOCATION", "us-central1")
+
+    if not GCP_PROJECT:
+        logger.warning(
+            "Vertex AI disabled: no GCP_PROJECT_ID or GOOGLE_CLOUD_PROJECT env var"
+        )
+    else:
+        vertexai.init(project=GCP_PROJECT, location=GCP_LOCATION)
+        # gemini-2.0-flash: good balance of speed and quality
+        # gemini-2.0-flash-lite: faster but sometimes less reliable JSON output
+        _model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+        coach_model = GenerativeModel(_model_name)
+        COACH_ENABLED = True
+        logger.info(
+            "Vertex AI initialized: project=%s location=%s model=%s",
+            GCP_PROJECT, GCP_LOCATION, _model_name,
+        )
 except Exception as e:
-    logging.error(f"Vertex AI init failed: {e}")
+    logger.exception("Vertex AI init failed — coach disabled")
     COACH_ENABLED = False
     coach_model = None
 
-# Coach generation config — low max_output_tokens = lower latency
-COACH_GEN_CONFIG = {"temperature": 0.9, "max_output_tokens": 60, "candidate_count": 1}
+# Coach generation config — structured JSON output, capped for latency
+COACH_GEN_CONFIG = GenerationConfig(
+    temperature=0.9,
+    max_output_tokens=80,
+    candidate_count=1,
+    response_mime_type="application/json",
+)
 
 # ---------------------------------------------------------------------------
 # Per-username write locks
@@ -549,7 +577,9 @@ async def coach_comment(
     user: dict = Depends(authenticate),
 ):
     if not COACH_ENABLED:
-        logging.warning("Coach called but COACH_ENABLED is False (check GCP_PROJECT_ID env var)")
+        logger.warning(
+            "Coach called but COACH_ENABLED=False (check GCP_PROJECT_ID env var)"
+        )
         return {"comment": "Great round!", "favorite_player": "", "emotion": "default"}
 
     db = firestore.client()
@@ -578,8 +608,6 @@ async def coach_comment(
     is_fav_winning = fav_score == max_score and fav_score > 0
     is_fav_last = fav_score > 0 and fav_score == min(req.totals.values())
 
-    # FIXED: check if any PREVIOUSLY-TEASED player is now actually LEADING.
-    # (old version compared last_place's score to itself — can never be true)
     was_teased_now_doing_well = any(
         p in teased and req.totals.get(p, 0) == max_score and max_score > 0
         for p in req.totals
@@ -594,7 +622,13 @@ async def coach_comment(
     else:
         backend_emotion = "default"
 
-    prompt = f"""You are Mr. Slow — dramatic, biased board game coach. Favorite: {favorite}. Last: {last_place}. Teased: {json.dumps(teased)}. Round {req.round_number}: scores={json.dumps(req.scores)}, totals={json.dumps(req.totals)}. Under 25 words. JSON only: {{"comment": "...", "emotion": "{backend_emotion}"}}"""
+    prompt = (
+        f"You are Mr. Slow — dramatic, biased board game coach. "
+        f"Favorite: {favorite}. Last: {last_place}. Teased: {json.dumps(teased)}. "
+        f"Round {req.round_number}: scores={json.dumps(req.scores)}, "
+        f"totals={json.dumps(req.totals)}. "
+        f"Under 25 words. Return JSON: {{\"comment\": \"...\", \"emotion\": \"{backend_emotion}\"}}"
+    )
 
     comment = "Great round, everyone! 🎲"
     emotion = backend_emotion
@@ -604,20 +638,53 @@ async def coach_comment(
             prompt,
             generation_config=COACH_GEN_CONFIG,
         )
-        raw = response.text.strip()
-        json_match = re.search(r'\{[^}]+\}', raw)
-        if json_match:
-            parsed = json.loads(json_match.group())
-            comment = parsed.get("comment", comment)
-            emotion = backend_emotion  # Backend authoritative
+        # response.text raises IndexError if no candidates (safety block, etc.)
+        raw = (response.text or "").strip()
+        if not raw:
+            logger.warning("Coach comment: empty response text from Gemini")
+            raise ValueError("empty Gemini response")
+
+        parsed = None
+        # 1) Try parsing raw as JSON directly (response_mime_type should ensure this)
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            pass
+
+        # 2) Fallback: extract JSON object from text
+        if parsed is None:
+            json_match = re.search(r'\{.*?\}', raw, re.DOTALL)
+            if json_match:
+                try:
+                    parsed = json.loads(json_match.group())
+                except json.JSONDecodeError:
+                    pass
+
+        if parsed and "comment" in parsed:
+            comment = str(parsed["comment"])[:200]
+            # Emotion always from backend — LLM output ignored
         else:
-            comment = raw.strip('"').strip("'")[:120]
+            # Gemini returned non-JSON; use raw text as comment
+            comment = raw.strip('"').strip("'")[:150]
+
+        logger.info(
+            "Coach comment generated: emotion=%s round=%d",
+            backend_emotion, req.round_number,
+        )
+
     except Exception as e:
-        logging.error(f"Coach comment generation failed: {e}")
+        logger.error(
+            "Coach comment generation failed for game=%s round=%d: %s",
+            req.game_id, req.round_number, e,
+        )
+        # Fallback comment — score submission must never break
 
     # Track teased players AFTER returning response (fire-and-forget)
     if last_place and last_place not in teased:
-        game_ref.update({"teased_players": ArrayUnion([last_place])})
+        try:
+            game_ref.update({"teased_players": ArrayUnion([last_place])})
+        except Exception as e:
+            logger.error("Failed to update teased_players: %s", e)
 
     return {"comment": comment, "favorite_player": favorite, "emotion": emotion}
 
@@ -637,8 +704,15 @@ async def coach_finale(
     user: dict = Depends(authenticate),
 ):
     if not COACH_ENABLED:
-        logging.warning("Coach finale called but COACH_ENABLED is False (check GCP_PROJECT_ID env var)")
-        return {"comment": "What a game!", "was_teased": False, "was_favorite": False, "emotion": "default"}
+        logger.warning(
+            "Coach finale called but COACH_ENABLED=False (check GCP_PROJECT_ID env var)"
+        )
+        return {
+            "comment": "What a game!",
+            "was_teased": False,
+            "was_favorite": False,
+            "emotion": "default",
+        }
 
     db = firestore.client()
     game_doc = db.collection("games").document(req.game_id).get()
@@ -656,15 +730,28 @@ async def coach_finale(
 
     if was_teased:
         backend_emotion = "shocked"
-        scenario = f"The winner is {req.winner} — a player you ROASTED all game! Eat your words dramatically. You're SHAKEN."
+        scenario = (
+            f"The winner is {req.winner} — a player you ROASTED all game! "
+            f"Eat your words dramatically. You're SHAKEN."
+        )
     elif was_favorite:
         backend_emotion = "happy"
-        scenario = f"The winner is {req.winner} — YOUR favorite! I CALLED IT! Take all the credit! 🎉"
+        scenario = (
+            f"The winner is {req.winner} — YOUR favorite! I CALLED IT! "
+            f"Take all the credit! 🎉"
+        )
     else:
         backend_emotion = "laugh"
-        scenario = f"The winner is {req.winner}. Your favorite {favorite} didn't win, but you're gracious — maybe a tiny tear."
+        scenario = (
+            f"The winner is {req.winner}. Your favorite {favorite} didn't win, "
+            f"but you're gracious — maybe a tiny tear."
+        )
 
-    prompt = f"""You are Mr. Slow — dramatic biased coach. {scenario} Final: {json.dumps(req.final_scores)}. Under 30 words. JSON only: {{"comment": "...", "emotion": "{backend_emotion}"}}"""
+    prompt = (
+        f"You are Mr. Slow — dramatic biased coach. {scenario} "
+        f"Final: {json.dumps(req.final_scores)}. "
+        f"Under 30 words. Return JSON: {{\"comment\": \"...\", \"emotion\": \"{backend_emotion}\"}}"
+    )
 
     comment = "What a game! Congratulations! 🏆"
     emotion = backend_emotion
@@ -674,16 +761,41 @@ async def coach_finale(
             prompt,
             generation_config=COACH_GEN_CONFIG,
         )
-        raw = response.text.strip()
-        json_match = re.search(r'\{[^}]+\}', raw)
-        if json_match:
-            parsed = json.loads(json_match.group())
-            comment = parsed.get("comment", comment)
-            emotion = backend_emotion
+        raw = (response.text or "").strip()
+        if not raw:
+            logger.warning("Coach finale: empty response text from Gemini")
+            raise ValueError("empty Gemini response")
+
+        parsed = None
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            pass
+
+        if parsed is None:
+            json_match = re.search(r'\{.*?\}', raw, re.DOTALL)
+            if json_match:
+                try:
+                    parsed = json.loads(json_match.group())
+                except json.JSONDecodeError:
+                    pass
+
+        if parsed and "comment" in parsed:
+            comment = str(parsed["comment"])[:250]
         else:
-            comment = raw.strip('"').strip("'")[:150]
+            comment = raw.strip('"').strip("'")[:200]
+
+        logger.info(
+            "Coach finale generated: emotion=%s winner=%s",
+            backend_emotion, req.winner,
+        )
+
     except Exception as e:
-        logging.error(f"Coach finale generation failed: {e}")
+        logger.error(
+            "Coach finale generation failed for game=%s winner=%s: %s",
+            req.game_id, req.winner, e,
+        )
+        # Fallback — game results must never break
 
     return {
         "comment": comment,
