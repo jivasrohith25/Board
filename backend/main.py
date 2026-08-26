@@ -69,8 +69,9 @@ try:
             vertexai=True,
             project=GCP_PROJECT,
             location=GCP_LOCATION,
+            http_options=types.HttpOptions(api_version="v1"),
         )
-        _gemini_model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+        _gemini_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
         COACH_ENABLED = True
         logger.info(
             "Vertex AI initialized: project=%s location=%s model=%s",
@@ -82,11 +83,17 @@ except Exception as e:
     _gemini_client = None
     _gemini_model = None
 
+class CoachResponse(BaseModel):
+    comment: str
+    emotion: str
+
+
 # Coach generation config — structured JSON output, capped for latency
 COACH_GEN_CONFIG = types.GenerateContentConfig(
     temperature=0.9,
     max_output_tokens=80,
     response_mime_type="application/json",
+    response_schema=CoachResponse,
 ) if COACH_ENABLED else None
 
 # ---------------------------------------------------------------------------
