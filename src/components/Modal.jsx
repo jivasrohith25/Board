@@ -6,11 +6,11 @@ export function Modal({ isOpen, onClose, children, title }) {
       {isOpen && (
         <>
           <motion.div
-            className="fixed inset-0 bg-warm-900/30 z-40 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/45 z-40 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.16 }}
             onClick={onClose}
           />
           <motion.div
@@ -18,19 +18,21 @@ export function Modal({ isOpen, onClose, children, title }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.16 }}
           >
             <motion.div
               className="card p-6 w-full max-w-sm"
-              style={{ boxShadow: '0 8px 24px rgba(104, 51, 40, 0.12), 0 2px 8px rgba(104, 51, 40, 0.06)' }}
-              initial={{ scale: 0.96, y: 8 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.96, y: 8 }}
+              initial={{ scale: 0.96, y: 10, filter: 'blur(3px)' }}
+              animate={{ scale: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ scale: 0.96, y: 10, filter: 'blur(3px)' }}
               transition={{ type: 'spring', damping: 28, stiffness: 350 }}
               onClick={e => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={title ? 'modal-title' : undefined}
             >
               {title && (
-                <h3 className="font-display text-lg font-bold text-warm-900 mb-3">{title}</h3>
+                <h3 id="modal-title" className="font-display text-lg font-bold text-text-primary mb-3">{title}</h3>
               )}
               {children}
             </motion.div>
@@ -45,7 +47,7 @@ export function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confi
   const confirmClass = variant === 'danger' ? 'btn-danger' : 'btn-primary'
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
-      <p className="text-warm-500 mb-5 text-sm leading-relaxed">{message}</p>
+      <p className="text-text-secondary mb-5 text-sm leading-relaxed">{message}</p>
       <div className="flex gap-3">
         <button onClick={onClose} className="btn-secondary flex-1">{cancelText}</button>
         <button onClick={onConfirm} className={`${confirmClass} flex-1`}>{confirmText}</button>

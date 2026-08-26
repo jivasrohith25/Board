@@ -4,9 +4,33 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: ['class', '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
+        bg: {
+          primary: 'rgb(var(--bg-primary-rgb) / <alpha-value>)',
+          secondary: 'rgb(var(--bg-secondary-rgb) / <alpha-value>)',
+          elevated: 'rgb(var(--bg-elevated-rgb) / <alpha-value>)',
+        },
+        text: {
+          primary: 'rgb(var(--text-primary-rgb) / <alpha-value>)',
+          secondary: 'rgb(var(--text-secondary-rgb) / <alpha-value>)',
+          muted: 'rgb(var(--text-muted-rgb) / <alpha-value>)',
+        },
+        accent: {
+          primary: 'rgb(var(--accent-primary-rgb) / <alpha-value>)',
+          secondary: 'rgb(var(--accent-secondary-rgb) / <alpha-value>)',
+        },
+        ui: {
+          border: 'rgb(var(--border-rgb) / <alpha-value>)',
+          shadow: 'rgb(var(--shadow-rgb) / <alpha-value>)',
+        },
+        status: {
+          success: 'rgb(var(--success-rgb) / <alpha-value>)',
+          error: 'rgb(var(--error-rgb) / <alpha-value>)',
+          warning: 'rgb(var(--warning-rgb) / <alpha-value>)',
+        },
         primary: {
           50: '#fef7ee',
           100: '#fdedd6',
@@ -56,10 +80,10 @@ export default {
         'label': ['0.6875rem', { lineHeight: '1.4', fontWeight: '600', letterSpacing: '0.06em' }],
       },
       boxShadow: {
-        'card': '0 1px 3px rgba(104, 51, 40, 0.04), 0 1px 2px rgba(104, 51, 40, 0.06)',
-        'card-hover': '0 4px 12px rgba(104, 51, 40, 0.08), 0 2px 4px rgba(104, 51, 40, 0.04)',
-        'elevated': '0 8px 24px rgba(104, 51, 40, 0.10), 0 2px 8px rgba(104, 51, 40, 0.06)',
-        'glow-primary': '0 0 20px rgba(237, 128, 39, 0.15)',
+        'card': '0 1px 3px var(--shadow-color), 0 1px 2px var(--shadow-color)',
+        'card-hover': '0 4px 12px var(--shadow-color), 0 2px 4px var(--shadow-color)',
+        'elevated': '0 8px 24px var(--shadow-color), 0 2px 8px var(--shadow-color)',
+        'glow-primary': '0 0 20px rgb(var(--accent-primary-rgb) / 0.22)',
       },
       animation: {
         'slide-up': 'slideUp 0.3s ease-out',

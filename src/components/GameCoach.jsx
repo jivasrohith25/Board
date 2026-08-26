@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo, useMemo } from 'react'
+import { useState, useEffect, useRef, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import coachDefault from '/coach/default.png'
@@ -15,7 +15,6 @@ const EMOTION_IMAGES = {
   sad: coachSad,
 }
 
-// Preload all images at module load — eliminates network flicker on emotion swap
 const PRELOADED_IMAGES = (() => {
   const imgs = {}
   Object.values(EMOTION_IMAGES).forEach(src => {
@@ -27,18 +26,13 @@ const PRELOADED_IMAGES = (() => {
 })()
 
 const BUBBLE_STYLES = {
-  default: { bg: '#faf5f0', border: '#ebb7a3', text: '#683328' },
-  happy: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af' },
-  laugh: { bg: '#fefce8', border: '#fde047', text: '#854d0e' },
-  shocked: { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b' },
-  sad: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af' },
+  default: 'bg-bg-elevated border-ui-border text-text-primary',
+  happy: 'bg-status-success/10 border-status-success/30 text-text-primary',
+  laugh: 'bg-status-warning/10 border-status-warning/30 text-text-primary',
+  shocked: 'bg-status-error/10 border-status-error/30 text-text-primary',
+  sad: 'bg-accent-primary/10 border-accent-primary/30 text-text-primary',
 }
 
-/**
- * GameCoach — Mr. Slow
- * permanent=true: character always visible, bubble fades in/out on comments
- * permanent=false: entire block fades in/out (results screen mode)
- */
 function GameCoachInner({ comment, emotion = 'default', fadeAfterMs = 5000, permanent = false, isTyping = false }) {
   const [bubbleVisible, setBubbleVisible] = useState(false)
   const [currentComment, setCurrentComment] = useState('')
@@ -50,9 +44,8 @@ function GameCoachInner({ comment, emotion = 'default', fadeAfterMs = 5000, perm
       setBubbleVisible(false)
       return
     }
-    // When typing, show a thinking bubble immediately
     if (isTyping) {
-      setCurrentComment('…')
+      setCurrentComment('...')
       setCurrentEmotion(emotion)
       setBubbleVisible(true)
       return
@@ -69,7 +62,6 @@ function GameCoachInner({ comment, emotion = 'default', fadeAfterMs = 5000, perm
     }
   }, [comment, emotion, fadeAfterMs, isTyping])
 
-  // Reset to default emotion when bubble fades
   useEffect(() => {
     if (!bubbleVisible && permanent) {
       const t = setTimeout(() => setCurrentEmotion('default'), 400)
@@ -77,31 +69,23 @@ function GameCoachInner({ comment, emotion = 'default', fadeAfterMs = 5000, perm
     }
   }, [bubbleVisible, permanent])
 
-  const bubbleStyle = BUBBLE_STYLES[currentEmotion] || BUBBLE_STYLES.default
+  const bubbleClass = BUBBLE_STYLES[currentEmotion] || BUBBLE_STYLES.default
 
   const Bubble = () => (
     <motion.div
-      className="relative px-3.5 py-2.5 rounded-2xl mb-1.5"
-      style={{
-        backgroundColor: bubbleStyle.bg,
-        border: `1.5px solid ${bubbleStyle.border}`,
-      }}
-      initial={{ opacity: 0, y: 8, scale: 0.92 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -4, scale: 0.96 }}
+      className={`relative px-4 py-3 rounded-2xl mb-2 border shadow-card ${bubbleClass}`}
+      initial={{ opacity: 0, y: 8, scale: 0.92, filter: 'blur(3px)' }}
+      animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, y: -4, scale: 0.96, filter: 'blur(2px)' }}
       transition={{ type: 'spring', stiffness: 320, damping: 24 }}
     >
-      <p className="text-xs font-medium leading-relaxed text-center" style={{ color: bubbleStyle.text }}>
+      <p className="text-xs font-bold leading-relaxed text-center">
         {currentComment}
       </p>
-      <div
-        className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 border-b-[1.5px] border-r-[1.5px]"
-        style={{ borderColor: bubbleStyle.border, backgroundColor: bubbleStyle.bg }}
-      />
+      <div className={`absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 border-b border-r ${bubbleClass}`} />
     </motion.div>
   )
 
-  // Character image — key ONLY on emotion, not comment, so text updates don't remount image
   const Character = ({ size = 'w-[110px] h-[110px]' }) => (
     <AnimatePresence mode="wait">
       <motion.img
@@ -117,10 +101,9 @@ function GameCoachInner({ comment, emotion = 'default', fadeAfterMs = 5000, perm
     </AnimatePresence>
   )
 
-  // Permanent mode: always render the character
   if (permanent) {
     return (
-      <div className="flex flex-col items-center max-w-[200px]">
+      <div className="flex flex-col items-center max-w-[220px]">
         <AnimatePresence>
           {bubbleVisible && currentComment && <Bubble />}
         </AnimatePresence>
@@ -129,12 +112,11 @@ function GameCoachInner({ comment, emotion = 'default', fadeAfterMs = 5000, perm
     )
   }
 
-  // Non-permanent mode: entire block fades (for results screen)
   return (
     <AnimatePresence>
       {bubbleVisible && currentComment && (
         <motion.div
-          className="flex flex-col items-center max-w-[200px]"
+          className="flex flex-col items-center max-w-[220px]"
           initial={{ opacity: 0, y: 16, scale: 0.85 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 8, scale: 0.92 }}
@@ -148,5 +130,4 @@ function GameCoachInner({ comment, emotion = 'default', fadeAfterMs = 5000, perm
   )
 }
 
-// Memoized export — only re-renders when props actually change
 export const GameCoach = memo(GameCoachInner)

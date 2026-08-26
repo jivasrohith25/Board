@@ -440,21 +440,25 @@ export function PointEntryScreen() {
   if (loading) return <LoadingSkeleton />
 
   const sorted = getSortedPlayers()
-  const RANK_EMOJI = ['👑', '#2', '#3']
 
   return (
-    <div className="min-h-screen bg-warm-50 flex flex-col lg:flex-row">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="min-h-screen bg-bg-primary flex flex-col lg:flex-row relative"
+    >
       {/* Sidebar Leaderboard */}
-      <div className="lg:w-72 lg:min-h-screen bg-white border-b lg:border-b-0 lg:border-r border-warm-100 p-4">
-        <div className="flex items-center justify-between mb-3">
+      <div className="lg:w-80 lg:min-h-screen bg-bg-elevated border-b lg:border-b-0 lg:border-r border-ui-border p-5 lg:p-6 shadow-sm z-10 flex flex-col">
+        <div className="flex items-center justify-between mb-6">
           <h2 className="section-label">Leaderboard</h2>
           {game?.roundLength && (
-            <span className="text-[10px] font-mono text-warm-400 bg-warm-50 px-2 py-0.5 rounded-full border border-warm-100">
+            <span className="text-xs font-mono font-bold text-accent-primary bg-accent-primary/10 px-2.5 py-1 rounded-full border border-accent-primary/20 shadow-sm">
               R{currentRound - 1}/{game.roundLength}
             </span>
           )}
         </div>
-        <div className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0">
+        <div className="flex lg:flex-col gap-2.5 overflow-x-auto lg:overflow-x-visible pb-3 lg:pb-0 hide-scrollbar flex-1">
           <AnimatePresence mode="popLayout">
             {sorted.map((player, i) => {
               const isTied = i > 0 && player.score === sorted[i - 1].score
@@ -463,34 +467,34 @@ export function PointEntryScreen() {
                 <motion.div
                   key={player.name}
                   layout
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl min-w-[140px] lg:min-w-0 transition-colors ${
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl min-w-[160px] lg:min-w-0 transition-all shadow-sm ${
                     isLeader
-                      ? 'bg-primary-50 border border-primary-200/80'
+                      ? 'bg-accent-primary/10 border border-accent-primary/30 ring-1 ring-accent-primary/10'
                       : isTied
-                        ? 'bg-primary-50/40 border border-dashed border-primary-200/60'
-                        : 'bg-warm-50/60 border border-transparent'
+                        ? 'bg-bg-primary border border-dashed border-ui-border opacity-90'
+                        : 'bg-bg-primary border border-transparent hover:border-ui-border'
                   }`}
                 >
-                  <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${
-                    isLeader ? 'bg-primary-500 text-white' : 'bg-warm-100 text-warm-400'
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm ${
+                    isLeader ? 'bg-accent-primary text-white' : 'bg-bg-secondary text-text-muted border border-ui-border'
                   }`}>
                     {isLeader ? '👑' : `#${i + 1}`}
                   </span>
-                  <span className={`flex-1 font-medium text-sm truncate ${
-                    isLeader ? 'text-primary-800' : 'text-warm-700'
+                  <span className={`flex-1 font-medium text-base truncate ${
+                    isLeader ? 'text-text-primary font-bold' : 'text-text-secondary'
                   }`}>
                     {player.name}
                     {isTied && (
-                      <span className="ml-1.5 text-[9px] font-bold text-primary-500 bg-primary-100 px-1 py-0.5 rounded-full align-middle">
-                        TIE
+                      <span className="ml-2 text-[10px] font-bold text-accent-primary bg-accent-primary/10 px-1.5 py-0.5 rounded-md align-middle uppercase tracking-wide border border-accent-primary/20">
+                        Tie
                       </span>
                     )}
                   </span>
                   <span className={`font-mono font-bold tabular-nums ${
-                    isLeader ? 'text-primary-600 text-lg' : 'text-warm-600 text-base'
+                    isLeader ? 'text-accent-primary text-xl' : 'text-text-secondary text-lg'
                   }`}>
                     {player.score}
                   </span>
@@ -501,20 +505,25 @@ export function PointEntryScreen() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 p-4 lg:p-8">
-        <div className="max-w-lg mx-auto">
+      {/* Main Content Area */}
+      <div className="flex-1 p-4 lg:p-8 relative overflow-y-auto">
+        <div className="max-w-2xl mx-auto">
           {/* Round Header */}
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="font-display text-display-sm text-warm-900">
+              <motion.h1
+                key={currentRound}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="font-display text-display-md text-text-primary"
+              >
                 Round {currentRound}
-              </h1>
-              <p className="text-warm-400 text-sm">Enter scores for each player</p>
+              </motion.h1>
+              <p className="text-text-secondary text-sm font-medium">Record scores for this round</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {!isOnline && (
-                <span className="px-2.5 py-1 bg-yellow-50 text-yellow-700 text-[11px] rounded-full font-medium border border-yellow-200/60">
+                <span className="px-3 py-1 bg-status-warning/10 text-status-warning text-xs rounded-full font-bold border border-status-warning/20 shadow-sm">
                   Offline
                 </span>
               )}
@@ -523,39 +532,47 @@ export function PointEntryScreen() {
 
           {/* Voice Input Bar */}
           {isSupported && (
-            <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-warm-50/80 border border-warm-100">
+            <div className="flex items-center gap-4 mb-6 p-4 rounded-2xl bg-bg-elevated border border-ui-border shadow-sm">
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={toggleGlobalVoice}
-                className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
+                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 shadow-md ${
                   isListening
-                    ? 'bg-danger-500 text-white shadow-lg shadow-danger-500/25'
-                    : 'bg-white text-warm-400 hover:text-warm-600 border border-warm-200 hover:border-warm-300'
+                    ? 'bg-status-error text-white shadow-status-error/30 ring-4 ring-status-error/20'
+                    : 'bg-bg-primary text-text-muted hover:text-accent-primary border-2 border-ui-border hover:border-accent-primary'
                 }`}
                 title={isListening ? 'Stop listening' : 'Speak all scores'}
               >
                 {isListening ? (
-                  <svg className="w-5 h-5 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
                     <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
                   </svg>
                 ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
                   </svg>
                 )}
               </motion.button>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-warm-500">
+                <p className="text-sm font-medium">
                   {isListening ? (
-                    <span className="text-danger-500 font-medium">Listening… speak player names and scores</span>
+                    <span className="text-status-error font-bold">Listening... Speak player names and scores</span>
                   ) : (
-                    'Tap mic, say names + scores (e.g. "Alice 25, Bob 30")'
+                    <span className="text-text-secondary">Tap mic, say names + scores (e.g. "Alice 25, Bob 30")</span>
                   )}
                 </p>
-                {isListening && transcript && (
-                  <p className="text-[11px] text-warm-400 italic mt-0.5 truncate">"{transcript}"</p>
-                )}
+                <AnimatePresence>
+                  {isListening && transcript && (
+                    <motion.p
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="text-xs text-text-muted italic mt-1 truncate"
+                    >
+                      "{transcript}"
+                    </motion.p>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           )}
@@ -564,30 +581,30 @@ export function PointEntryScreen() {
           <AnimatePresence>
             {Object.keys(pendingScores).length > 0 && (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mb-3"
+                initial={{ opacity: 0, height: 0, y: -10 }}
+                animate={{ opacity: 1, height: 'auto', y: 0 }}
+                exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                className="mb-6 overflow-hidden"
               >
-                <div className="p-3 rounded-xl border border-primary-200/60 bg-primary-50/40">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="section-label text-primary-600">Voice Matched — Review</span>
-                    <div className="flex gap-2">
+                <div className="p-4 rounded-2xl border-2 border-accent-primary/40 bg-accent-primary/5 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="section-label text-accent-primary">Voice Matched — Review</span>
+                    <div className="flex gap-3">
                       <button
                         onClick={acceptAllPending}
-                        className="text-[11px] font-semibold text-primary-600 hover:text-primary-800 transition-colors"
+                        className="text-xs font-bold text-accent-primary hover:text-accent-secondary transition-colors"
                       >
                         Accept All
                       </button>
                       <button
                         onClick={dismissPending}
-                        className="text-[11px] font-medium text-warm-400 hover:text-warm-600 transition-colors"
+                        className="text-xs font-semibold text-text-muted hover:text-text-primary transition-colors"
                       >
                         Dismiss
                       </button>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2.5">
                     {Object.entries(pendingScores).map(([player, score]) => (
                       <motion.button
                         key={player}
@@ -595,20 +612,19 @@ export function PointEntryScreen() {
                         animate={{ scale: 1, opacity: 1 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => acceptPendingScore(player)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary-100 border border-primary-200 text-primary-800 text-sm font-medium hover:bg-primary-200 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-bg-elevated border border-accent-primary/30 text-text-primary text-sm font-medium hover:border-accent-primary shadow-sm transition-colors group"
                         title={`Click to accept ${score} for ${player}`}
                       >
                         <span>{player}</span>
-                        <span className="font-mono font-bold text-primary-700">{score}</span>
-                        <svg className="w-3 h-3 text-primary-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
+                        <span className="font-mono font-bold text-accent-primary">{score}</span>
+                        <span className="w-5 h-5 rounded-md bg-accent-primary/10 flex items-center justify-center group-hover:bg-accent-primary group-hover:text-white transition-colors">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </span>
                       </motion.button>
                     ))}
                   </div>
-                  <p className="text-[10px] text-primary-500 mt-2">
-                    Tap a chip to accept, or "Accept All"
-                  </p>
                 </div>
               </motion.div>
             )}
@@ -621,50 +637,66 @@ export function PointEntryScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mb-3"
+                className="mb-6"
               >
-                <div className="p-3 rounded-xl border border-yellow-200/60 bg-yellow-50/60">
-                  <p className="section-label text-yellow-600 mb-1">⚠ Unrecognized Names</p>
-                  <p className="text-xs text-yellow-700">
-                    Heard but couldn't match:{' '}
-                    <span className="font-semibold">{unrecognizedNames.join(', ')}</span>
-                  </p>
+                <div className="p-4 rounded-2xl border border-status-warning/40 bg-status-warning/10 shadow-sm flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-status-warning mb-1">Unrecognized Names</p>
+                    <p className="text-sm text-text-secondary">
+                      Heard but couldn't match:{' '}
+                      <span className="font-semibold text-text-primary">{unrecognizedNames.join(', ')}</span>
+                    </p>
+                  </div>
                   <button
                     onClick={() => setUnrecognizedNames([])}
-                    className="text-[11px] text-yellow-500 hover:text-yellow-700 font-medium mt-1 transition-colors"
+                    className="p-1 text-text-muted hover:text-text-primary transition-colors"
                   >
-                    Dismiss
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Score Inputs + Coach (adjacent on desktop, stacked on mobile) */}
-          <div className="space-y-2 mb-3 lg:flex lg:items-start lg:gap-6">
-            <div className="lg:flex-1 min-w-0">
-              {game.players.map((player, idx) => (
-                <div key={player} className="card p-3.5 flex items-center gap-3">
-                  <div className="w-1 h-8 rounded-full bg-warm-200 flex-shrink-0" />
-                  <label className="flex-1 font-medium text-warm-800 text-sm">{player}</label>
+          {/* Score Inputs + Coach Layout */}
+          <div className="space-y-4 mb-8 lg:flex lg:items-start lg:gap-8 lg:space-y-0">
+            {/* Inputs Column */}
+            <div className="lg:flex-1 min-w-0 flex flex-col gap-3">
+              {game.players.map((player) => (
+                <div key={player} className="card p-4 flex items-center gap-4 relative overflow-hidden group">
+                  {/* Focus indicator bar */}
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-accent-primary opacity-0 group-focus-within:opacity-100 transition-opacity" />
+
+                  <label className="flex-1 font-bold text-text-primary text-base pl-2">{player}</label>
+
                   {pendingScores[player] !== undefined && (
-                    <span className="text-[10px] bg-primary-100 text-primary-600 px-2 py-0.5 rounded-full font-semibold">
-                      PENDING
+                    <span className="text-[10px] bg-accent-primary/10 text-accent-primary px-2 py-1 rounded-md font-bold uppercase tracking-wider border border-accent-primary/20">
+                      Pending
                     </span>
                   )}
-                  <input
-                    type="number"
-                    value={scores[player] ?? ''}
-                    onChange={(e) => handleScoreChange(player, e.target.value)}
-                    placeholder="0"
-                    className="input-field w-24 text-center text-lg font-mono font-bold py-2"
-                  />
+
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={scores[player] ?? ''}
+                      onChange={(e) => handleScoreChange(player, e.target.value)}
+                      placeholder="0"
+                      className="input-field w-28 text-center text-xl font-mono font-bold py-3 pr-4"
+                    />
+                    {scores[player] !== '' && scores[player] !== undefined && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted font-bold">
+                        pts
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
 
-            {/* Coach — desktop: right of inputs; mobile: stacked below */}
-            <div className="lg:w-48 lg:flex-none lg:sticky lg:top-20 lg:self-start hidden lg:block">
+            {/* Coach Column */}
+            <div className="lg:w-64 lg:flex-none lg:sticky lg:top-8 hidden lg:block">
               <GameCoach
                 comment={coachComment}
                 emotion={coachEmotion}
@@ -675,8 +707,8 @@ export function PointEntryScreen() {
             </div>
           </div>
 
-          {/* Mobile coach — only on small screens */}
-          <div className="lg:hidden mt-4">
+          {/* Mobile coach */}
+          <div className="lg:hidden mb-8">
             <GameCoach
               comment={coachComment}
               emotion={coachEmotion}
@@ -686,79 +718,83 @@ export function PointEntryScreen() {
             />
           </div>
 
-          {/* Submit Round */}
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => submitRound()}
-            disabled={submitting}
-            className="btn-primary w-full mb-2 text-base font-display"
-          >
-            {submitting ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
-                Submitting…
-              </span>
-            ) : 'Submit Round'}
-          </motion.button>
-
-          {/* Undo */}
-          <AnimatePresence>
-            {undoAvailable && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="text-center mb-3"
-              >
-                <button
-                  onClick={undoLastRound}
-                  className="text-primary-500 hover:text-primary-700 text-xs font-medium transition-colors"
-                >
-                  ↩ Undo last round
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* End Game Button */}
-          <div className="flex justify-center mt-6 pt-4 border-t border-warm-100">
+          {/* Action Area */}
+          <div className="bg-bg-elevated p-6 rounded-3xl border border-ui-border shadow-elevated">
             <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowEndConfirm(true)}
-              className="btn-ghost text-danger-500 hover:bg-danger-50 border border-danger-200/60 px-5 text-sm"
+              whileTap={{ scale: 0.98 }}
+              onClick={() => submitRound()}
+              disabled={submitting}
+              className="btn-primary w-full mb-4 py-4 text-lg font-display shadow-md"
             >
-              End Game
+              {submitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  Saving Round...
+                </span>
+              ) : 'Submit Scores'}
             </motion.button>
+
+            {/* Undo */}
+            <AnimatePresence>
+              {undoAvailable && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <button
+                    onClick={undoLastRound}
+                    className="w-full py-3 flex items-center justify-center gap-2 text-text-secondary hover:text-text-primary font-medium transition-colors bg-bg-secondary rounded-xl border border-ui-border hover:border-text-muted mb-4"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                    Undo Round {currentRound - 1}
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => setShowEndConfirm(true)}
+                className="text-status-error hover:text-red-700 font-semibold text-sm underline underline-offset-4 decoration-status-error/30 hover:decoration-status-error transition-colors"
+              >
+                End Game Early
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Modals remain mostly the same structurally but will pick up global theme vars */}
       {/* Zero Confirmation Modal */}
       <Modal
         isOpen={showZeroConfirm}
         onClose={() => setShowZeroConfirm(false)}
         title="Empty Scores"
       >
-        <p className="text-warm-500 text-sm mb-3">
-          These players will receive <span className="font-bold text-warm-700">0</span> for this round:
+        <p className="text-text-secondary text-sm mb-4 leading-relaxed">
+          The following players will receive <span className="font-bold text-text-primary bg-bg-secondary px-1.5 py-0.5 rounded">0 points</span> for this round:
         </p>
-        <ul className="mb-4 space-y-1.5">
+        <ul className="mb-6 space-y-2 bg-bg-secondary p-4 rounded-xl border border-ui-border">
           {zeroPlayers.map(p => (
-            <li key={p} className="text-warm-800 font-medium text-sm flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-danger-400" />
+            <li key={p} className="text-text-primary font-bold text-base flex items-center gap-3">
+              <span className="w-2 h-2 rounded-full bg-status-error shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
               {p}
             </li>
           ))}
         </ul>
         <div className="flex gap-3">
-          <button onClick={() => setShowZeroConfirm(false)} className="btn-secondary flex-1">
+          <button onClick={() => setShowZeroConfirm(false)} className="btn-secondary flex-1 py-3.5">
             Go Back
           </button>
-          <button onClick={() => submitRound(true)} className="btn-primary flex-1">
-            Confirm
+          <button onClick={() => submitRound(true)} className="btn-primary flex-1 py-3.5 bg-status-error hover:bg-status-error/90 focus:ring-status-error">
+            Confirm Zeros
           </button>
         </div>
       </Modal>
@@ -769,49 +805,50 @@ export function PointEntryScreen() {
         onClose={() => setShowEndConfirm(false)}
         onConfirm={() => { setShowEndConfirm(false); setShowEndModal(true) }}
         title="End Game?"
-        message="Are you sure you want to end this game? You can Rematch or see Results from the next screen."
+        message="Are you sure you want to end this game early? You can choose to Rematch or see the Final Results next."
         confirmText="End Game"
         cancelText="Keep Playing"
       />
 
-      
       {/* End Game Modal */}
       <Modal
         isOpen={showEndModal}
         onClose={() => setShowEndModal(false)}
-        title="End Game"
+        title="Game Over"
       >
         {archiving ? (
-          <div className="text-center py-4">
-            <svg className="w-8 h-8 animate-spin mx-auto text-primary-500 mb-3" fill="none" viewBox="0 0 24 24">
+          <div className="text-center py-8">
+            <svg className="w-10 h-10 animate-spin mx-auto text-accent-primary mb-4" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
             </svg>
-            <p className="text-warm-500 text-sm">Saving your game…</p>
+            <p className="text-text-secondary font-medium">Tallying final scores...</p>
           </div>
         ) : (
           <>
-            <p className="text-warm-500 text-sm mb-4">What would you like to do?</p>
-            <div className="space-y-2.5">
+            <p className="text-text-secondary text-sm mb-6 text-center">What's next for this group?</p>
+            <div className="space-y-3">
               <motion.button
-                whileTap={{ scale: 0.97 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleEndGame('rematch')}
-                className="btn-primary w-full flex items-center justify-center gap-2"
+                className="btn-primary w-full flex flex-col items-center justify-center gap-1 py-4 h-auto shadow-md"
               >
-                🔄 Rematch
-                <span className="text-xs opacity-70 font-normal">(same players, reset scores)</span>
+                <div className="flex items-center gap-2 text-lg">
+                  <span className="text-xl">🔄</span> Rematch
+                </div>
+                <span className="text-xs font-normal opacity-80">Keep roster, reset scores to zero</span>
               </motion.button>
               <motion.button
-                whileTap={{ scale: 0.97 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleEndGame('end')}
-                className="btn-secondary w-full text-danger-600"
+                className="btn-secondary w-full py-4 text-text-primary border-2 border-ui-border hover:border-text-muted"
               >
-                🏁 End &amp; See Results
+                🏁 View Podium & Final Results
               </motion.button>
             </div>
           </>
         )}
       </Modal>
-    </div>
+    </motion.div>
   )
 }
