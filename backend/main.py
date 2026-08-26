@@ -83,17 +83,10 @@ except Exception as e:
     _gemini_client = None
     _gemini_model = None
 
-class CoachResponse(BaseModel):
-    comment: str
-    emotion: str
-
-
-# Coach generation config — structured JSON, capped for latency
+# Coach generation config — plain text, capped for latency
 COACH_GEN_CONFIG = types.GenerateContentConfig(
     temperature=0.9,
     max_output_tokens=150,
-    response_mime_type="application/json",
-    response_schema=CoachResponse,
 ) if COACH_ENABLED else None
 
 # ---------------------------------------------------------------------------
@@ -632,14 +625,20 @@ async def coach_comment(
         backend_emotion = "default"
 
     prompt = (
-        f"You are Mr. Slow — dramatic, biased board game coach. "
-        f"Favorite: {favorite}. Last: {last_place}. Teased: {json.dumps(teased)}. "
-        f"Round {req.round_number}: scores={json.dumps(req.scores)}, "
-        f"totals={json.dumps(req.totals)}. "
-        f"Write a dramatic, funny board-game coach comment in 1-2 sentences, around 20-35 words. "
-        f"Make it specific to the scores and what just happened. "
-        f"Do not give generic phrases like 'Great round'. "
-        f"Return JSON: {{\"comment\": \"...\", \"emotion\": \"{backend_emotion}\"}}"
+        f"You are Mr. Slow, a dramatic and funny board-game coach.\n\n"
+        f"Favorite player: {favorite}\n"
+        f"Last place: {last_place}\n"
+        f"Previously teased players: {json.dumps(teased)}\n\n"
+        f"Round: {req.round_number}\n"
+        f"Round scores: {json.dumps(req.scores)}\n"
+        f"Total scores: {json.dumps(req.totals)}\n\n"
+        f"Write a specific, entertaining coach comment about what just happened.\n"
+        f"The comment should be 1-2 sentences and approximately 20-35 words.\n"
+        f"Mention player names when useful.\n"
+        f"Do not use generic comments such as 'Great round, everyone!'.\n"
+        f"Do not explain your answer.\n\n"
+        f"Return ONLY valid JSON in exactly this format:\n"
+        f'{{"comment":"your comment here","emotion":"{backend_emotion}"}}'
     )
 
     comment = "Great round, everyone! 🎲"
@@ -652,41 +651,29 @@ async def coach_comment(
             config=COACH_GEN_CONFIG,
         )
 
-        # 1) Use SDK-parsed response (response_schema gives us a CoachResponse)
-        parsed_obj = getattr(response, "parsed", None)
-        if parsed_obj is not None and hasattr(parsed_obj, "comment"):
-            comment = str(parsed_obj.comment)[:300]
+        raw = (response.text or "").strip()
+        if not raw:
+            raise ValueError("empty Gemini response")
+
+        parsed = None
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            json_match = re.search(r'\{[\s\S]*\}', raw)
+            if json_match:
+                try:
+                    parsed = json.loads(json_match.group(0))
+                except json.JSONDecodeError:
+                    pass
+
+        if parsed and isinstance(parsed, dict) and parsed.get("comment"):
+            comment = str(parsed["comment"]).strip()[:300]
+            # Emotion always from backend — LLM output ignored
         else:
-            # 2) Fall back to text parsing
-            raw = (getattr(response, "text", None) or "").strip()
-            if not raw:
-                raise ValueError("empty Gemini response")
-
-            fenced = re.match(r"^```(?:json)?\s*\n?(.*?)\n?\s*```$", raw, re.DOTALL)
-            if fenced:
-                raw = fenced.group(1).strip()
-
-            parsed = None
-            try:
-                parsed = json.loads(raw)
-            except (json.JSONDecodeError, TypeError):
-                pass
-
-            if parsed is None:
-                json_match = re.search(r'\{.*?\}', raw, re.DOTALL)
-                if json_match:
-                    try:
-                        parsed = json.loads(json_match.group())
-                    except (json.JSONDecodeError, TypeError):
-                        pass
-
-            if isinstance(parsed, dict) and "comment" in parsed:
-                comment = str(parsed["comment"])[:300]
-            else:
-                logger.warning(
-                    "Could not parse coach comment from Gemini output: %s",
-                    raw[:200],
-                )
+            logger.warning(
+                "Could not parse coach comment from Gemini output: %s",
+                raw[:500],
+            )
 
         logger.info(
             "Coach comment generated: emotion=%s round=%d comment=%s",
@@ -771,12 +758,16 @@ async def coach_finale(
         )
 
     prompt = (
-        f"You are Mr. Slow — dramatic biased coach. {scenario} "
-        f"Final: {json.dumps(req.final_scores)}. "
-        f"Write a dramatic, funny board-game coach comment in 1-2 sentences, around 25-40 words. "
-        f"Make it specific to the final scores and who won. "
-        f"Do not give generic phrases. "
-        f"Return JSON: {{\"comment\": \"...\", \"emotion\": \"{backend_emotion}\"}}"
+        f"You are Mr. Slow, a dramatic and funny board-game coach.\n\n"
+        f"{scenario}\n\n"
+        f"Final scores: {json.dumps(req.final_scores)}\n\n"
+        f"Write a specific, entertaining coach comment about the final result.\n"
+        f"The comment should be 1-2 sentences and approximately 20-35 words.\n"
+        f"Mention player names when useful.\n"
+        f"Do not use generic comments.\n"
+        f"Do not explain your answer.\n\n"
+        f"Return ONLY valid JSON in exactly this format:\n"
+        f'{{"comment":"your comment here","emotion":"{backend_emotion}"}}'
     )
 
     comment = "What a game! Congratulations! 🏆"
@@ -789,41 +780,28 @@ async def coach_finale(
             config=COACH_GEN_CONFIG,
         )
 
-        # 1) Use SDK-parsed response
-        parsed_obj = getattr(response, "parsed", None)
-        if parsed_obj is not None and hasattr(parsed_obj, "comment"):
-            comment = str(parsed_obj.comment)[:300]
+        raw = (response.text or "").strip()
+        if not raw:
+            raise ValueError("empty Gemini response")
+
+        parsed = None
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            json_match = re.search(r'\{[\s\S]*\}', raw)
+            if json_match:
+                try:
+                    parsed = json.loads(json_match.group(0))
+                except json.JSONDecodeError:
+                    pass
+
+        if parsed and isinstance(parsed, dict) and parsed.get("comment"):
+            comment = str(parsed["comment"]).strip()[:300]
         else:
-            # 2) Fall back to text parsing
-            raw = (getattr(response, "text", None) or "").strip()
-            if not raw:
-                raise ValueError("empty Gemini response")
-
-            fenced = re.match(r"^```(?:json)?\s*\n?(.*?)\n?\s*```$", raw, re.DOTALL)
-            if fenced:
-                raw = fenced.group(1).strip()
-
-            parsed = None
-            try:
-                parsed = json.loads(raw)
-            except (json.JSONDecodeError, TypeError):
-                pass
-
-            if parsed is None:
-                json_match = re.search(r'\{.*?\}', raw, re.DOTALL)
-                if json_match:
-                    try:
-                        parsed = json.loads(json_match.group())
-                    except (json.JSONDecodeError, TypeError):
-                        pass
-
-            if isinstance(parsed, dict) and "comment" in parsed:
-                comment = str(parsed["comment"])[:300]
-            else:
-                logger.warning(
-                    "Could not parse coach finale from Gemini output: %s",
-                    raw[:200],
-                )
+            logger.warning(
+                "Could not parse coach finale from Gemini output: %s",
+                raw[:500],
+            )
 
         logger.info(
             "Coach finale generated: emotion=%s winner=%s comment=%s",
