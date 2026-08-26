@@ -44,14 +44,15 @@ gcs_client = gcs_storage.Client()
 BUCKET_NAME = os.environ.get("GCS_BUCKET", "bgsk-game-history")
 
 # ---------------------------------------------------------------------------
-# Vertex AI — Game Coach
+# Vertex AI — Game Coach (uses google.genai — the current supported API)
 # ---------------------------------------------------------------------------
 COACH_ENABLED = False
-coach_model = None
+_gemini_client = None
+_gemini_model = None
 
 try:
-    import vertexai
-    from vertexai.generative_models import GenerativeModel, GenerationConfig
+    from google import genai
+    from google.genai import types
 
     GCP_PROJECT = os.environ.get(
         "GCP_PROJECT_ID",
@@ -64,28 +65,29 @@ try:
             "Vertex AI disabled: no GCP_PROJECT_ID or GOOGLE_CLOUD_PROJECT env var"
         )
     else:
-        vertexai.init(project=GCP_PROJECT, location=GCP_LOCATION)
-        # gemini-2.0-flash: good balance of speed and quality
-        # gemini-2.0-flash-lite: faster but sometimes less reliable JSON output
-        _model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
-        coach_model = GenerativeModel(_model_name)
+        _gemini_client = genai.Client(
+            vertexai=True,
+            project=GCP_PROJECT,
+            location=GCP_LOCATION,
+        )
+        _gemini_model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
         COACH_ENABLED = True
         logger.info(
             "Vertex AI initialized: project=%s location=%s model=%s",
-            GCP_PROJECT, GCP_LOCATION, _model_name,
+            GCP_PROJECT, GCP_LOCATION, _gemini_model,
         )
 except Exception as e:
     logger.exception("Vertex AI init failed — coach disabled")
     COACH_ENABLED = False
-    coach_model = None
+    _gemini_client = None
+    _gemini_model = None
 
 # Coach generation config — structured JSON output, capped for latency
-COACH_GEN_CONFIG = GenerationConfig(
+COACH_GEN_CONFIG = types.GenerateContentConfig(
     temperature=0.9,
     max_output_tokens=80,
-    candidate_count=1,
     response_mime_type="application/json",
-)
+) if COACH_ENABLED else None
 
 # ---------------------------------------------------------------------------
 # Per-username write locks
@@ -634,9 +636,10 @@ async def coach_comment(
     emotion = backend_emotion
 
     try:
-        response = coach_model.generate_content(
-            prompt,
-            generation_config=COACH_GEN_CONFIG,
+        response = _gemini_client.models.generate_content(
+            model=_gemini_model,
+            contents=prompt,
+            config=COACH_GEN_CONFIG,
         )
         # response.text raises IndexError if no candidates (safety block, etc.)
         raw = (response.text or "").strip()
@@ -757,9 +760,10 @@ async def coach_finale(
     emotion = backend_emotion
 
     try:
-        response = coach_model.generate_content(
-            prompt,
-            generation_config=COACH_GEN_CONFIG,
+        response = _gemini_client.models.generate_content(
+            model=_gemini_model,
+            contents=prompt,
+            config=COACH_GEN_CONFIG,
         )
         raw = (response.text or "").strip()
         if not raw:
