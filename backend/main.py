@@ -86,7 +86,7 @@ except Exception as e:
 # Coach generation config — plain text, capped for latency
 COACH_GEN_CONFIG = types.GenerateContentConfig(
     temperature=0.9,
-    max_output_tokens=150,
+    max_output_tokens=100,
 ) if COACH_ENABLED else None
 
 # ---------------------------------------------------------------------------
@@ -638,7 +638,9 @@ async def coach_comment(
         f"Do not use generic comments such as 'Great round, everyone!'.\n"
         f"Do not explain your answer.\n\n"
         f"Return ONLY valid JSON in exactly this format:\n"
-        f'{{"comment":"your comment here","emotion":"{backend_emotion}"}}'
+        f'{{"comment":"your comment here","emotion":"{backend_emotion}"}}\n\n'
+        f"Respond with ONLY the raw JSON object. No markdown code fences, no "
+        f"explanation, no preamble text. Your entire response must start with {{ and end with }}."
     )
 
     comment = "Great round, everyone! 🎲"
@@ -661,16 +663,16 @@ async def coach_comment(
         if not raw:
             raise ValueError("empty Gemini response")
 
+        # Strip markdown code fences if present
+        raw = re.sub(r'^```(?:json)?\s*|\s*```$', '', raw, flags=re.MULTILINE).strip()
+
         parsed = None
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError:
-            json_match = re.search(r'\{[\s\S]*\}', raw)
-            if json_match:
-                try:
-                    parsed = json.loads(json_match.group(0))
-                except json.JSONDecodeError:
-                    pass
+        json_match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if json_match:
+            try:
+                parsed = json.loads(json_match.group())
+            except json.JSONDecodeError:
+                pass
 
         if parsed and isinstance(parsed, dict) and parsed.get("comment"):
             comment = str(parsed["comment"]).strip()[:300]
@@ -773,7 +775,9 @@ async def coach_finale(
         f"Do not use generic comments.\n"
         f"Do not explain your answer.\n\n"
         f"Return ONLY valid JSON in exactly this format:\n"
-        f'{{"comment":"your comment here","emotion":"{backend_emotion}"}}'
+        f'{{"comment":"your comment here","emotion":"{backend_emotion}"}}\n\n'
+        f"Respond with ONLY the raw JSON object. No markdown code fences, no "
+        f"explanation, no preamble text. Your entire response must start with {{ and end with }}."
     )
 
     comment = "What a game! Congratulations! 🏆"
@@ -796,16 +800,16 @@ async def coach_finale(
         if not raw:
             raise ValueError("empty Gemini response")
 
+        # Strip markdown code fences if present
+        raw = re.sub(r'^```(?:json)?\s*|\s*```$', '', raw, flags=re.MULTILINE).strip()
+
         parsed = None
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError:
-            json_match = re.search(r'\{[\s\S]*\}', raw)
-            if json_match:
-                try:
-                    parsed = json.loads(json_match.group(0))
-                except json.JSONDecodeError:
-                    pass
+        json_match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if json_match:
+            try:
+                parsed = json.loads(json_match.group())
+            except json.JSONDecodeError:
+                pass
 
         if parsed and isinstance(parsed, dict) and parsed.get("comment"):
             comment = str(parsed["comment"]).strip()[:300]
