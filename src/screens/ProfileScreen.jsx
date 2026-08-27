@@ -6,12 +6,14 @@ import { useToast } from '../contexts/ToastContext'
 import { AVATARS } from '../config/avatars'
 
 export function ProfileScreen() {
-  const { user, username, avatar, setAvatar, logout } = useAuth()
+  const { user, username, displayName, avatar, setAvatar, setDisplayName, logout } = useAuth()
   const { showSuccess, showError } = useToast()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [selected, setSelected] = useState(avatar || null)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [nameInput, setNameInput] = useState(displayName || username || '')
+  const [savingName, setSavingName] = useState(false)
 
   const handleSave = async () => {
     if (!selected) { showError('Pick an avatar first'); return }
@@ -34,6 +36,15 @@ export function ProfileScreen() {
     } catch (err) {
       showError('Logout failed')
     }
+  }
+
+  const handleSaveName = async () => {
+    if (!nameInput.trim()) { showError('Name cannot be empty'); return }
+    setSavingName(true)
+    const result = await setDisplayName(nameInput)
+    setSavingName(false)
+    if (result.success) { showSuccess('Name updated!') }
+    else { showError(`Failed: ${result.error}`) }
   }
 
   return (
@@ -66,13 +77,39 @@ export function ProfileScreen() {
               <img src={AVATARS.find(a => a.id === selected)?.file} alt={selected} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               <span style={{ color: '#ecab37', fontSize: '18px', fontWeight: '900' }}>
-                {username?.[0]?.toUpperCase() || '?'}
+                {displayName?.[0]?.toUpperCase() || '?'}
               </span>
             )}
           </div>
           <div>
-            <p style={{ fontFamily: 'Arial Black, Arial', fontSize: '14px', fontWeight: '900', color: '#21242e', margin: '0 0 2px 0' }}>{user?.displayName || username}</p>
+            <p style={{ fontFamily: 'Arial Black, Arial', fontSize: '14px', fontWeight: '900', color: '#21242e', margin: '0 0 2px 0' }}>{displayName || username}</p>
             <p style={{ fontSize: '10px', fontWeight: '700', color: '#60619c', margin: 0 }}>@{username}</p>
+          </div>
+        </div>
+
+        {/* Change Name */}
+        <div className="ds-form-panel" style={{ padding: '12px 16px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#60619c', display: 'block', marginBottom: '4px' }}>DISPLAY NAME</label>
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value.slice(0, 20))}
+                className="ds-input"
+                style={{ width: '100%', fontSize: '12px' }}
+                placeholder="Your display name"
+              />
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleSaveName}
+              disabled={savingName || !nameInput.trim() || nameInput === displayName}
+              className="ds-btn-primary"
+              style={{ marginTop: '14px', padding: '8px 16px', fontSize: '10px' }}
+            >
+              {savingName ? '...' : 'SAVE'}
+            </motion.button>
           </div>
         </div>
 

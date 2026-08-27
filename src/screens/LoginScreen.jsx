@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 
 export function LoginScreen() {
-  const { user, username, loginWithGoogle, claimUsername, checkUsernameAvailability, checkingUsername, usernameError, usernameAvailable, loading, configMissing } = useAuth()
+  const { user, username, displayName, loginWithGoogle, claimUsername, checkUsernameAvailability, checkingUsername, usernameError, usernameAvailable, loading, configMissing } = useAuth()
   const navigate = useNavigate()
   const [usernameInput, setUsernameInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -267,7 +267,7 @@ VITE_FIREBASE_APP_ID=...`}
                   marginBottom: '16px',
                 }}>
                   <p style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#60619c', margin: '0 0 4px 0' }}>PLAYING AS</p>
-                  <p style={{ fontFamily: 'Arial Black, Arial', fontSize: '18px', fontWeight: '900', color: '#e48600', margin: 0 }}>{username}</p>
+                  <p style={{ fontFamily: 'Arial Black, Arial', fontSize: '18px', fontWeight: '900', color: '#e48600', margin: 0 }}>{displayName || username}</p>
                 </div>
 
                 <motion.button
@@ -277,6 +277,22 @@ VITE_FIREBASE_APP_ID=...`}
                   style={{ width: '100%', padding: '16px 24px', marginBottom: '8px' }}
                 >
                   START NEW GAME
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate('/join')}
+                  className="ds-btn-primary"
+                  style={{ width: '100%', padding: '16px 24px', marginBottom: '8px' }}
+                >
+                  JOIN WITH CODE
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate('/name-input?game=raja-rani')}
+                  className="ds-btn-secondary"
+                  style={{ width: '100%', background: '#21242e', color: '#ecab37', borderBottomColor: '#e48600' }}
+                >
+                  👑 RAJA RANI
                 </motion.button>
                 <motion.button
                   whileTap={{ scale: 0.98 }}

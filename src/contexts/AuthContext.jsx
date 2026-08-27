@@ -55,6 +55,7 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [username, setUsername] = useState(null)
+  const [displayName, setDisplayNameState] = useState(null)
   const [avatar, setAvatarState] = useState(null)
   const [loading, setLoading] = useState(true)
   const [checkingUsername, setCheckingUsername] = useState(false)
@@ -72,6 +73,7 @@ export function AuthProvider({ children }) {
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
         if (userDoc.exists()) {
           setUsername(userDoc.data().username)
+          setDisplayNameState(userDoc.data().displayName || userDoc.data().display_name || userDoc.data().username)
           setAvatarState(userDoc.data().avatar || null)
         }
       } else {
@@ -136,12 +138,13 @@ export function AuthProvider({ children }) {
         transaction.set(usernameRef, { uid: user.uid, claimedAt: serverTimestamp() })
         transaction.set(doc(db, 'users', user.uid), {
           username: lowerName,
-          displayName: user.displayName,
+          displayName: user.displayName || lowerName,
           photoURL: user.photoURL,
           createdAt: serverTimestamp()
         })
       })
       setUsername(lowerName)
+      setDisplayNameState(lowerName)
       return { success: true }
     } catch (err) {
       return { success: false, error: err.message }
@@ -154,7 +157,14 @@ export function AuthProvider({ children }) {
     }
     try {
       const result = await signInWithPopup(auth, googleProvider)
-      return result.user
+      const u = result.user
+      await setDoc(doc(db, 'users', u.uid), {
+        username: u.displayName || u.email?.split('@')[0] || 'player',
+        displayName: u.displayName || u.email?.split('@')[0] || 'player',
+        photoURL: u.photoURL,
+        createdAt: serverTimestamp(),
+      }, { merge: true })
+      return u
     } catch (err) {
       throw err
     }
@@ -174,10 +184,23 @@ export function AuthProvider({ children }) {
     await signOut(auth)
   }
 
+  const setDisplayName = async (newName) => {
+    if (!newName || newName.trim().length < 1) return { success: false, error: 'Name cannot be empty' }
+    const trimmed = newName.trim().slice(0, 20)
+    try {
+      await setDoc(doc(db, 'users', user.uid), { displayName: trimmed }, { merge: true })
+      setDisplayNameState(trimmed)
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  }
+
   return (
     <AuthContext.Provider value={{
       user,
       username,
+      displayName,
       avatar,
       setAvatar,
       loading,
@@ -189,6 +212,7 @@ export function AuthProvider({ children }) {
       claimUsername,
       loginWithGoogle,
       logout,
+      setDisplayName,
     }}>
       {children}
     </AuthContext.Provider>

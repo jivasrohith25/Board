@@ -9,6 +9,7 @@ import { DicePage } from './screens/DicePage'
 import { HistoryScreen } from './screens/HistoryScreen'
 import { HistoryDetailScreen } from './screens/HistoryDetailScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
+import { JoinGameScreen } from './screens/JoinGameScreen'
 import { LoadingSkeleton } from './components/LoadingSkeleton'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { NavBar } from './components/NavBar'
@@ -76,6 +77,11 @@ export default function App() {
             <Route path="/profile" element={
               <PrivateRoute>
                 <ProfileScreen />
+              </PrivateRoute>
+            } />
+            <Route path="/join" element={
+              <PrivateRoute>
+                <JoinGameScreen />
               </PrivateRoute>
             } />
             <Route path="/" element={<Navigate to="/name-input" replace />} />

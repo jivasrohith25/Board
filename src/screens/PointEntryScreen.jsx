@@ -1,21 +1,47 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { v4 as uuidv4 } from 'uuid'
-import { doc, getDoc, setDoc, deleteDoc, updateDoc, collection, getDocs, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, deleteDoc, updateDoc, collection, getDocs, serverTimestamp, onSnapshot, query, orderBy } from 'firebase/firestore'
 import { db, useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { Modal, ConfirmModal } from '../components/Modal'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import { GameCoach } from '../components/GameCoach'
 import { useVoiceInput } from '../hooks/useVoiceInput'
+import { TiltCard } from '../components/TiltCard'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
+
+// Resolve player names from potentially mixed format (old: string[], new: [{uid, display_name}])
+function getPlayerNames(players) {
+  if (!players || players.length === 0) return []
+  if (typeof players[0] === 'string') return players
+  return players.map(p => p.display_name)
+}
+
+// Find current user's display name by matching uid
+function findMyPlayerName(players, playerUids, myUid) {
+  if (!players || !myUid) return null
+  // New format: [{uid, display_name}]
+  if (players.length > 0 && typeof players[0] === 'object') {
+    const match = players.find(p => p.uid === myUid)
+    return match?.display_name || null
+  }
+  // Old format: string[] — can't match by uid, fall back to first player if host
+  if (playerUids && playerUids[0] === myUid) return players[0]
+  return null
+}
+
+// Is the user the host?
+function isHostPlayer(game, myUid) {
+  return game?.createdBy === myUid
+}
 
 export function PointEntryScreen() {
   const { gameId } = useParams()
   const navigate = useNavigate()
-  const { user, username } = useAuth()
+  const { user, username, displayName } = useAuth()
   const { showError, showSuccess, showInfo } = useToast()
 
   const [game, setGame] = useState(null)
@@ -29,6 +55,7 @@ export function PointEntryScreen() {
   const [zeroPlayers, setZeroPlayers] = useState([])
   const [showEndModal, setShowEndModal] = useState(false)
   const [showEndConfirm, setShowEndConfirm] = useState(false)
+  const [showRematchConfirm, setShowRematchConfirm] = useState(false)
   const [undoAvailable, setUndoAvailable] = useState(false)
   const [archiving, setArchiving] = useState(false)
   const [archivedGameId, setArchivedGameId] = useState(null)
@@ -43,6 +70,15 @@ export function PointEntryScreen() {
   const [pendingScores, setPendingScores] = useState({})
   const [unrecognizedNames, setUnrecognizedNames] = useState([])
   const [popupVisible, setPopupVisible] = useState(false)
+
+  // Derived state: player names and current user's identity
+  const playerNames = useMemo(() => getPlayerNames(game?.players), [game?.players])
+  const myPlayerName = useMemo(
+    () => findMyPlayerName(game?.players, game?.playerUids, user?.uid),
+    [game?.players, game?.playerUids, user?.uid]
+  )
+  const isGameHost = useMemo(() => isHostPlayer(game, user?.uid), [game, user?.uid])
+  const isLobby = game && !game.startedAt && game.status === 'lobby'
 
   const handleVoiceTranscript = useCallback(async (rawText) => {
     setIsVoiceActive(false)
@@ -103,7 +139,10 @@ export function PointEntryScreen() {
   }
 
   const acceptAllPending = () => {
-    Object.entries(pendingScores).forEach(([player, score]) => handleScoreChange(player, score.toString()))
+    // Only accept pending scores that match the current user's player name
+    if (myPlayerName && pendingScores[myPlayerName] !== undefined) {
+      handleScoreChange(myPlayerName, pendingScores[myPlayerName].toString())
+    }
     setPendingScores({}); setPopupVisible(false)
   }
 
@@ -130,26 +169,47 @@ export function PointEntryScreen() {
     }
   }, [isOnline])
 
-  useEffect(() => { loadGame() }, [gameId])
+  // Main game + rounds listeners
+  useEffect(() => {
+    const gameRef = doc(db, 'games', gameId)
+    const roundsRef = collection(db, 'games', gameId, 'rounds')
 
-  const loadGame = async () => {
-    try {
-      const gameDoc = await getDoc(doc(db, 'games', gameId))
-      if (!gameDoc.exists()) { navigate('/name-input'); return }
-      const gameData = gameDoc.data()
+    const unsubGame = onSnapshot(gameRef, (snap) => {
+      if (!snap.exists()) { navigate('/name-input'); return }
+      const gameData = snap.data()
       setGame(gameData)
-      const initScores = {}, initTotals = {}
-      gameData.players.forEach(p => { initScores[p] = ''; initTotals[p] = 0 })
-      const roundsSnap = await getDocs(collection(db, 'games', gameId, 'rounds'))
+
+      // Initialize score inputs for current user only
+      const names = getPlayerNames(gameData.players)
+      const myName = findMyPlayerName(gameData.players, gameData.playerUids, user?.uid)
+      if (myName) {
+        setScores(prev => {
+          // Only reset if we don't already have a value for this player
+          if (prev[myName] !== undefined && prev[myName] !== '') return prev
+          return { ...prev, [myName]: '' }
+        })
+      }
+      setLoading(false)
+    }, (err) => {
+      console.error('Game listener error:', err)
+      showError('Failed to load game')
+      setLoading(false)
+    })
+
+    const unsubRounds = onSnapshot(query(roundsRef, orderBy('submittedAt')), (snap) => {
       const rounds = []
-      roundsSnap.forEach(d => rounds.push({ id: d.id, ...d.data() }))
-      rounds.sort((a, b) => parseInt(a.id) - parseInt(b.id))
+      snap.forEach(d => rounds.push({ id: d.id, ...d.data() }))
+      const names = game ? getPlayerNames(game.players) : []
+      const initTotals = {}
+      names.forEach(p => { initTotals[p] = 0 })
       rounds.forEach(r => { Object.entries(r.scores).forEach(([player, score]) => { initTotals[player] = (initTotals[player] || 0) + score }) })
-      setRoundHistory(rounds); setTotalScores(initTotals); setScores(initScores); setCurrentRound(rounds.length + 1); setLoading(false)
-    } catch (err) {
-      console.error('Failed to load game:', err); showError('Failed to load game'); setLoading(false)
-    }
-  }
+      setRoundHistory(rounds); setTotalScores(initTotals); setCurrentRound(rounds.length + 1)
+    }, (err) => {
+      console.error('Rounds listener error:', err)
+    })
+
+    return () => { unsubGame(); unsubRounds() }
+  }, [gameId])
 
   const handleScoreChange = (player, value) => {
     if (value === '' || value === '-') { setScores(prev => ({ ...prev, [player]: value })); return }
@@ -158,12 +218,21 @@ export function PointEntryScreen() {
   }
 
   const submitRound = async (forceZeros = false) => {
-    if (submitting) return
-    const emptyPlayers = game.players.filter(p => scores[p] === '' || scores[p] === undefined)
-    if (!forceZeros && emptyPlayers.length > 0) { setZeroPlayers(emptyPlayers); setShowZeroConfirm(true); return }
+    if (submitting || !myPlayerName) return
+
+    const myScore = scores[myPlayerName]
+    if (!forceZeros && (myScore === '' || myScore === undefined)) {
+      setZeroPlayers([myPlayerName])
+      setShowZeroConfirm(true)
+      return
+    }
     setShowZeroConfirm(false); setSubmitting(true)
+
+    // Build round scores: only the current user's score
     const roundScores = {}
-    game.players.forEach(p => { const val = scores[p]; roundScores[p] = (val === '' || val === undefined) ? 0 : parseInt(val) || 0 })
+    playerNames.forEach(p => { roundScores[p] = 0 }) // Default all to 0
+    roundScores[myPlayerName] = (myScore === '' || myScore === undefined) ? 0 : parseInt(myScore) || 0
+
     const newTotals = { ...totalScores }
     Object.entries(roundScores).forEach(([p, s]) => { newTotals[p] = (newTotals[p] || 0) + s })
     setTotalScores(newTotals)
@@ -171,9 +240,7 @@ export function PointEntryScreen() {
     const newRound = { scores: roundScores, submittedAt: new Date().toISOString() }
     setRoundHistory(prev => [...prev, { id: roundNum, ...newRound }])
     setCurrentRound(prev => prev + 1)
-    const resetScores = {}
-    game.players.forEach(p => resetScores[p] = '')
-    setScores(resetScores)
+    setScores(prev => ({ ...prev, [myPlayerName]: '' }))
 
     const writeRound = async () => {
       try { await setDoc(doc(db, 'games', gameId, 'rounds', roundNum), { ...newRound, submittedAt: serverTimestamp() }) }
@@ -221,7 +288,7 @@ export function PointEntryScreen() {
       const response = await fetch(`${API_BASE}/games/${gameId}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ players: game.players, rounds: roundHistory.map((r, i) => ({ round_number: i + 1, scores: r.scores })), final_scores: totalScores, winner: getSortedPlayers()[0]?.name || '' }),
+        body: JSON.stringify({ players: playerNames, rounds: roundHistory.map((r, i) => ({ round_number: i + 1, scores: r.scores })), final_scores: totalScores, winner: getSortedPlayers()[0]?.name || '' }),
       })
       if (!response.ok) { const errBody = await response.json().catch(() => ({})); throw new Error(errBody.detail || errBody.error || `Server error ${response.status}`) }
       const data = await response.json(); setArchivedGameId(data.id || gameId); return data.id || gameId
@@ -234,12 +301,23 @@ export function PointEntryScreen() {
     if (action === 'rematch') {
       const savedId = await archiveGame()
       const resetTotals = {}, resetScores = {}
-      game.players.forEach(p => { resetTotals[p] = 0; resetScores[p] = '' })
+      playerNames.forEach(p => { resetTotals[p] = 0; resetScores[p] = '' })
       const roundsSnap = await getDocs(collection(db, 'games', gameId, 'rounds'))
       const deletePromises = []
       roundsSnap.forEach(d => deletePromises.push(deleteDoc(doc(db, 'games', gameId, 'rounds', d.id))))
       await Promise.all(deletePromises)
-      await updateDoc(doc(db, 'games', gameId), { currentRound: 1 })
+      const newJoinCode = generateJoinCode()
+      // Build players for rematch
+      const playersArray = playerNames.map(name => {
+        const existing = (game.players || []).find(p => (typeof p === 'object' ? p.display_name : p) === name)
+        return typeof existing === 'object' ? existing : { uid: null, display_name: name }
+      })
+      const playerUidsList = playersArray.filter(p => p.uid).map(p => p.uid)
+      await updateDoc(doc(db, 'games', gameId), {
+        currentRound: 1, joinCode: newJoinCode,
+        players: playersArray, playerUids: playerUidsList,
+        startedAt: null, status: 'lobby',
+      })
       setTotalScores(resetTotals); setScores(resetScores); setRoundHistory([]); setCurrentRound(1); setUndoAvailable(false); setArchivedGameId(null)
       showSuccess('Rematch! Scores reset.')
     } else {
@@ -248,23 +326,138 @@ export function PointEntryScreen() {
     }
   }
 
+  const generateJoinCode = () => {
+    const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+    let code = ''
+    for (let i = 0; i < 6; i++) code += CHARS[Math.floor(Math.random() * CHARS.length)]
+    return code
+  }
+
+  const handleRematchNew = async () => {
+    setShowRematchConfirm(false)
+    if (!game || rematching) return
+    setRematching(true)
+    try {
+      const newGameId = uuidv4()
+      const joinCode = generateJoinCode()
+      const playersArray = playerNames.map(name => {
+        const existing = (game.players || []).find(p => (typeof p === 'object' ? p.display_name : p) === name)
+        return typeof existing === 'object' ? existing : { uid: null, display_name: name }
+      })
+      const playerUidsList = playersArray.filter(p => p.uid).map(p => p.uid)
+      await setDoc(doc(db, 'games', newGameId), {
+        createdBy: user.uid, username,
+        players: playersArray, playerUids: playerUidsList,
+        roundLength: game.roundLength || 5, joinCode,
+        currentRound: 1, status: 'lobby', createdAt: serverTimestamp(),
+      })
+      navigate(`/point-entry/${newGameId}`)
+    } catch (err) { console.error('Rematch failed:', err) }
+    finally { setRematching(false) }
+  }
+  const [rematching, setRematching] = useState(false)
+
   const getSortedPlayers = useCallback(() => {
     if (!game) return []
-    return game.players.map(name => ({ name, score: totalScores[name] || 0 })).sort((a, b) => b.score - a.score)
-  }, [game, totalScores])
+    return playerNames.map(name => ({ name, score: totalScores[name] || 0 })).sort((a, b) => b.score - a.score)
+  }, [playerNames, totalScores])
 
   if (loading) return <LoadingSkeleton />
   const sorted = getSortedPlayers()
 
+  // LOBBY VIEW — game not yet started
+  if (isLobby) {
+    const lobbyPlayers = game.players || []
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        style={{ minHeight: 'calc(100vh - 48px)', background: '#7a8aba', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+      >
+        <div style={{ maxWidth: '480px', width: '100%' }}>
+          <div className="ds-form-panel" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="section-label-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '14px' }}>⏳</span>
+              WAITING FOR HOST
+            </div>
+            <div style={{ padding: '24px' }}>
+              {/* Join Code */}
+              {game.joinCode && (
+                <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                  <p style={{ fontSize: '10px', fontWeight: '700', color: '#60619c', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>GAME CODE</p>
+                  <span style={{
+                    fontFamily: 'Arial, monospace', fontSize: '24px', fontWeight: '900',
+                    color: '#ecab37', letterSpacing: '6px', background: '#21242e',
+                    padding: '8px 16px', display: 'inline-block',
+                  }}>{game.joinCode}</span>
+                </div>
+              )}
+
+              {/* Players connected */}
+              <p style={{ fontSize: '11px', fontWeight: '700', color: '#60619c', textTransform: 'uppercase', textAlign: 'center', margin: '0 0 12px 0' }}>
+                {lobbyPlayers.length} PLAYER{lobbyPlayers.length !== 1 ? 'S' : ''} CONNECTED
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
+                {lobbyPlayers.map((p) => {
+                  const name = typeof p === 'object' ? p.display_name : p
+                  const uid = typeof p === 'object' ? p.uid : null
+                  const isMe = uid === user.uid
+                  return (
+                    <div key={name} style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '8px 12px', background: isMe ? 'rgba(236, 171, 55, 0.12)' : '#ffffff',
+                      borderLeft: isMe ? '3px solid #ecab37' : '3px solid transparent',
+                    }}>
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: '#21242e', flex: 1 }}>{name}</span>
+                      {isMe && <span style={{ fontSize: '9px', fontWeight: '700', color: '#ecab37' }}>(YOU)</span>}
+                      <span style={{ width: '8px', height: '8px', borderRadius: '9999px', background: '#15803d' }} />
+                    </div>
+                  )
+                })}
+              </div>
+
+              {isGameHost ? (
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={async () => {
+                    await updateDoc(doc(db, 'games', gameId), { startedAt: serverTimestamp(), status: 'active' })
+                  }}
+                  className="ds-btn-submit"
+                  style={{ width: '100%', padding: '16px' }}
+                >
+                  🎮 START GAME
+                </motion.button>
+              ) : (
+                <motion.p
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  style={{ fontSize: '12px', fontWeight: '700', color: '#ecab37', textAlign: 'center', margin: 0 }}
+                >
+                  ⏳ Waiting for host to start...
+                </motion.p>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    )
+  }
+
+  // ACTIVE GAME VIEW
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      style={{ minHeight: 'calc(100vh - 48px)', background: '#7a8aba', display: 'flex', flexDirection: 'row', position: 'relative', overflowX: 'hidden' }}
+      style={{ minHeight: 'calc(100vh - 48px)', background: '#7a8aba', backgroundImage: 'url(/bg/pointinput.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', display: 'flex', flexDirection: 'row', position: 'relative', overflowX: 'hidden' }}
+      className="point-entry-layout"
     >
+      {/* Scrim for readability */}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(122,138,186,0.82) 0%, rgba(33,36,46,0.7) 100%)', pointerEvents: 'none', zIndex: 0 }} />
+
       {/* === SIDEBAR LEADERBOARD === */}
-      <div className="ds-nav-bar" style={{
+      <div className="ds-nav-bar pe-sidebar" style={{
         width: '280px', minHeight: 'calc(100vh - 48px)',
         display: 'flex', flexDirection: 'column',
         padding: '16px', flexShrink: 0,
@@ -283,14 +476,24 @@ export function PointEntryScreen() {
           )}
         </div>
 
+        {/* Join Code + Copy */}
+        {game?.joinCode && (
+          <div style={{ background: 'rgba(236, 171, 55, 0.15)', border: '1px solid rgba(236, 171, 55, 0.3)', padding: '8px', marginBottom: '12px', textAlign: 'center' }}>
+            <p style={{ fontSize: '8px', fontWeight: '700', color: '#ecab37', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>JOIN CODE</p>
+            <p style={{ fontFamily: 'Arial, monospace', fontSize: '20px', fontWeight: '900', color: '#ffffff', letterSpacing: '6px', margin: '0 0 6px 0' }}>{game.joinCode}</p>
+            <CopyButton code={game.joinCode} />
+          </div>
+        )}
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
           <AnimatePresence mode="popLayout">
             {sorted.map((player, i) => {
               const isTied = i > 0 && player.score === sorted[i - 1].score
               const isLeader = i === 0 && !isTied
+              const isMe = player.name === myPlayerName
               return (
+                <TiltCard key={player.name} style={{ display: 'block' }}>
                 <motion.div
-                  key={player.name}
                   layout
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -298,8 +501,8 @@ export function PointEntryScreen() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '8px',
                     padding: '8px 10px',
-                    background: isLeader ? 'rgba(236, 171, 55, 0.15)' : 'rgba(255,255,255,0.05)',
-                    borderLeft: isLeader ? '3px solid #ecab37' : '3px solid transparent',
+                    background: isLeader ? 'rgba(236, 171, 55, 0.15)' : isMe ? 'rgba(61, 79, 151, 0.12)' : 'rgba(255,255,255,0.05)',
+                    borderLeft: isLeader ? '3px solid #ecab37' : isMe ? '3px solid #3d4f97' : '3px solid transparent',
                   }}
                 >
                   <span style={{
@@ -314,12 +517,14 @@ export function PointEntryScreen() {
                   </span>
                   <span style={{ flex: 1, fontSize: '11px', fontWeight: '700', color: isLeader ? '#ffffff' : '#9fbee7', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {player.name}
+                    {isMe && <span style={{ fontSize: '8px', color: '#3d4f97', marginLeft: '4px', fontWeight: '700' }}>YOU</span>}
                     {isTied && <span style={{ fontSize: '8px', color: '#ecab37', marginLeft: '4px' }}>TIE</span>}
                   </span>
                   <span style={{ fontFamily: 'Arial, monospace', fontWeight: '900', fontSize: isLeader ? '14px' : '12px', color: isLeader ? '#ecab37' : '#9fbee7', fontVariantNumeric: 'tabular-nums' }}>
                     {player.score}
                   </span>
                 </motion.div>
+                </TiltCard>
               )
             })}
           </AnimatePresence>
@@ -327,7 +532,7 @@ export function PointEntryScreen() {
       </div>
 
       {/* === MAIN CONTENT === */}
-      <div style={{ flex: 1, padding: '16px', overflowY: 'auto', position: 'relative' }}>
+      <div className="pe-main" style={{ flex: 1, padding: '16px', overflowY: 'auto', position: 'relative' }}>
         <div style={{ maxWidth: '720px', margin: '0 auto' }}>
           {/* Round Header */}
           <div className="section-label-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -371,7 +576,7 @@ export function PointEntryScreen() {
               </motion.button>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: '11px', fontWeight: '700', margin: 0, color: isListening ? '#e60012' : '#3d4f97' }}>
-                  {isListening ? 'LISTENING... SPEAK PLAYER NAMES AND SCORES' : 'TAP MIC, SAY NAMES + SCORES (e.g. "Alice 25, Bob 30")'}
+                  {isListening ? 'LISTENING... SPEAK YOUR SCORE' : `TAP MIC, SAY YOUR SCORE (e.g. "${myPlayerName || 'Your Name'} 25")`}
                 </p>
                 <AnimatePresence>
                   {isListening && transcript && (
@@ -384,32 +589,30 @@ export function PointEntryScreen() {
             </div>
           )}
 
-          {/* Pending Voice Scores */}
+          {/* Pending Voice Scores — only show for current user */}
           <AnimatePresence>
-            {Object.keys(pendingScores).length > 0 && (
+            {myPlayerName && pendingScores[myPlayerName] !== undefined && (
               <motion.div initial={{ opacity: 0, height: 0, y: -10 }} animate={{ opacity: 1, height: 'auto', y: 0 }} exit={{ opacity: 0, height: 0, scale: 0.95 }} style={{ marginBottom: '12px', overflow: 'hidden' }}>
                 <div className="ds-form-panel" style={{ padding: '12px 16px', borderTop: '3px solid #f68d1f' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#f68d1f' }}>VOICE MATCHED — REVIEW</span>
                     <div style={{ display: 'flex', gap: '12px' }}>
-                      <button onClick={acceptAllPending} style={{ fontSize: '10px', fontWeight: '700', color: '#f68d1f', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>ACCEPT ALL</button>
+                      <button onClick={acceptAllPending} style={{ fontSize: '10px', fontWeight: '700', color: '#f68d1f', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>ACCEPT</button>
                       <button onClick={dismissPending} style={{ fontSize: '10px', fontWeight: '700', color: '#60619c', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>DISMISS</button>
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {Object.entries(pendingScores).map(([player, score]) => (
-                      <motion.button key={player} initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} whileTap={{ scale: 0.95 }} onClick={() => acceptPendingScore(player)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          padding: '6px 12px',
-                          background: '#ffffff', border: '1px solid rgba(246, 141, 31, 0.3)',
-                          cursor: 'pointer', fontSize: '11px', fontWeight: '700', color: '#21242e',
-                        }}>
-                        <span>{player}</span>
-                        <span style={{ fontFamily: 'Arial, monospace', fontWeight: '900', color: '#f68d1f' }}>{score}</span>
-                        <span style={{ fontSize: '14px', color: '#f68d1f' }}>✓</span>
-                      </motion.button>
-                    ))}
+                    <motion.button initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} whileTap={{ scale: 0.95 }} onClick={() => acceptPendingScore(myPlayerName)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        padding: '6px 12px',
+                        background: '#ffffff', border: '1px solid rgba(246, 141, 31, 0.3)',
+                        cursor: 'pointer', fontSize: '11px', fontWeight: '700', color: '#21242e',
+                      }}>
+                      <span>{myPlayerName}</span>
+                      <span style={{ fontFamily: 'Arial, monospace', fontWeight: '900', color: '#f68d1f' }}>{pendingScores[myPlayerName]}</span>
+                      <span style={{ fontSize: '14px', color: '#f68d1f' }}>✓</span>
+                    </motion.button>
                   </div>
                 </div>
               </motion.div>
@@ -433,30 +636,49 @@ export function PointEntryScreen() {
             )}
           </AnimatePresence>
 
-          {/* Score Inputs + Coach */}
+          {/* Score Inputs + Coach — own score only */}
           <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', alignItems: 'flex-start' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-              {game.players.map((player) => (
-                <div key={player} className="ds-form-panel" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', overflow: 'hidden' }}>
-                  <label style={{ flex: 1, fontWeight: '700', fontSize: '12px', color: '#21242e', paddingLeft: '4px', margin: 0 }}>{player}</label>
-                  {pendingScores[player] !== undefined && (
-                    <span style={{ fontSize: '8px', fontWeight: '700', color: '#f68d1f', textTransform: 'uppercase', letterSpacing: '0.5px', background: 'rgba(246, 141, 31, 0.15)', padding: '2px 6px' }}>PENDING</span>
-                  )}
-                  <input
-                    type="number"
-                    value={scores[player] ?? ''}
-                    onChange={(e) => handleScoreChange(player, e.target.value)}
-                    placeholder="0"
-                    style={{
-                      width: '100px', textAlign: 'center',
-                      fontFamily: 'Arial, monospace', fontSize: '16px', fontWeight: '900',
-                      background: '#ffffff', color: '#21242e',
-                      border: '1px solid #5a5f8c', borderRadius: '2px',
-                      padding: '8px', outline: 'none',
-                    }}
-                  />
-                </div>
-              ))}
+              {playerNames.map((player) => {
+                const isMe = player === myPlayerName
+                return (
+                  <div key={player} className="ds-form-panel" style={{
+                    display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', overflow: 'hidden',
+                    borderLeft: isMe ? '3px solid #ecab37' : '3px solid transparent',
+                    background: isMe ? 'rgba(236, 171, 55, 0.06)' : undefined,
+                  }}>
+                    <label style={{ flex: 1, fontWeight: '700', fontSize: '12px', color: isMe ? '#21242e' : '#60619c', paddingLeft: '4px', margin: 0 }}>
+                      {player}
+                      {isMe && <span style={{ fontSize: '9px', color: '#ecab37', marginLeft: '6px' }}>(YOU)</span>}
+                    </label>
+                    {isMe ? (
+                      <input
+                        type="number"
+                        value={scores[player] ?? ''}
+                        onChange={(e) => handleScoreChange(player, e.target.value)}
+                        placeholder="0"
+                        style={{
+                          width: '100px', textAlign: 'center',
+                          fontFamily: 'Arial, monospace', fontSize: '16px', fontWeight: '900',
+                          background: '#ffffff', color: '#21242e',
+                          border: '2px solid #ecab37', borderRadius: '2px',
+                          padding: '8px', outline: 'none',
+                        }}
+                        autoFocus
+                      />
+                    ) : (
+                      <span style={{
+                        width: '100px', textAlign: 'center',
+                        fontFamily: 'Arial, monospace', fontSize: '14px', fontWeight: '700',
+                        color: '#60619c', padding: '8px',
+                        background: '#f5f5f5', border: '1px solid #dedede', borderRadius: '2px',
+                      }}>
+                        {totalScores[player] || 0}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
             {/* Coach */}
@@ -470,7 +692,7 @@ export function PointEntryScreen() {
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => submitRound()}
-              disabled={submitting}
+              disabled={submitting || !myPlayerName}
               className="ds-btn-submit"
               style={{ width: '100%', marginBottom: '8px', padding: '16px 24px' }}
             >
@@ -482,7 +704,7 @@ export function PointEntryScreen() {
                   </svg>
                   SAVING ROUND...
                 </span>
-              ) : 'SUBMIT SCORES'}
+              ) : 'SUBMIT MY SCORE'}
             </motion.button>
 
             <AnimatePresence>
@@ -505,21 +727,13 @@ export function PointEntryScreen() {
       </div>
 
       {/* === MODALS === */}
-      <Modal isOpen={showZeroConfirm} onClose={() => setShowZeroConfirm(false)} title="Empty Scores">
+      <Modal isOpen={showZeroConfirm} onClose={() => setShowZeroConfirm(false)} title="Empty Score">
         <p style={{ fontSize: '12px', color: '#3d4f97', marginBottom: '12px' }}>
-          Players below will receive <span style={{ fontWeight: '700', color: '#21242e', background: '#dedede', padding: '1px 6px' }}>0 points</span> this round:
+          Your score will be recorded as <span style={{ fontWeight: '700', color: '#21242e', background: '#dedede', padding: '1px 6px' }}>0 points</span> this round.
         </p>
-        <ul style={{ background: '#dedede', listStyle: 'none', margin: '0 0 16px 0', padding: '12px 16px' }}>
-          {zeroPlayers.map(p => (
-            <li key={p} style={{ fontWeight: '700', fontSize: '12px', color: '#21242e', padding: '4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ width: '6px', height: '6px', background: '#e60012', borderRadius: '9999px', flexShrink: 0 }} />
-              {p}
-            </li>
-          ))}
-        </ul>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => setShowZeroConfirm(false)} className="ds-btn-secondary" style={{ flex: 1 }}>GO BACK</button>
-          <button onClick={() => submitRound(true)} className="ds-btn-submit" style={{ flex: 1, background: '#e60012', borderBottomColor: 'rgba(0,0,0,0.3)' }}>CONFIRM ZEROS</button>
+          <button onClick={() => submitRound(true)} className="ds-btn-submit" style={{ flex: 1, background: '#e60012', borderBottomColor: 'rgba(0,0,0,0.3)' }}>CONFIRM ZERO</button>
         </div>
       </Modal>
 
@@ -547,7 +761,43 @@ export function PointEntryScreen() {
         )}
       </Modal>
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }`}</style>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        @media (max-width: 768px) {
+          .point-entry-layout { flex-direction: column !important; }
+          .pe-sidebar { width: 100% !important; min-height: auto !important; border-right: none !important; border-bottom: 3px solid rgba(0,0,0,0.3) !important; max-height: 200px; overflow-y: auto; }
+          .pe-main { padding: 12px !important; }
+        }
+      `}</style>
     </motion.div>
+  )
+}
+
+// Small copy button component
+function CopyButton({ code }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = code
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+  return (
+    <button onClick={handleCopy} style={{
+      background: 'none', border: 'none', cursor: 'pointer',
+      fontSize: '9px', fontWeight: '700', color: copied ? '#15803d' : '#ecab37',
+      textTransform: 'uppercase', letterSpacing: '0.5px', padding: '2px 4px',
+    }}>
+      {copied ? '✓ COPIED' : '📋 COPY'}
+    </button>
   )
 }

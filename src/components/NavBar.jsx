@@ -5,10 +5,11 @@ import { getAvatarUrl } from '../config/avatars'
 export function NavBar() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, username, avatar } = useAuth()
+  const { user, displayName, avatar } = useAuth()
 
   const navItems = [
     { label: 'NEW GAME', path: '/name-input' },
+    { label: 'JOIN', path: '/join' },
     { label: 'DICE', path: '/dice' },
     { label: 'HISTORY', path: '/history' },
   ]
@@ -87,7 +88,7 @@ export function NavBar() {
               <img src={getAvatarUrl(avatar)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               <span style={{ color: '#ecab37', fontSize: '10px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                {username?.[0]?.toUpperCase() || '?'}
+                {displayName?.[0]?.toUpperCase() || '?'}
               </span>
             )}
           </button>
@@ -96,7 +97,7 @@ export function NavBar() {
 
       {/* Subnav strip */}
       <div className="ds-subnav" style={{ display: 'flex', alignItems: 'center', gap: '16px', maxWidth: '1440px', margin: '0 auto' }}>
-        <span style={{ opacity: 0.6 }}>Players: {username || '---'}</span>
+        <span style={{ opacity: 0.6 }}>Players: {displayName || '---'}</span>
         <span style={{ opacity: 0.3 }}>|</span>
         <span style={{ opacity: 0.6, fontSize: '10px' }}>BOARD GAME SCOREKEEPER v1.0</span>
       </div>

@@ -29,11 +29,25 @@ function burstConfetti() {
 
 const BAR_STYLES = ['bg-accent-primary', 'bg-accent-secondary', 'bg-status-success', 'bg-status-warning']
 
+// Resolve player names from potentially mixed format
+function getPlayerNames(players) {
+  if (!players || players.length === 0) return []
+  if (typeof players[0] === 'string') return players
+  return players.map(p => p.display_name)
+}
+
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+function generateJoinCode() {
+  let code = ''
+  for (let i = 0; i < 6; i++) code += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]
+  return code
+}
+
 export function ResultsScreen() {
   const { gameId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, username } = useAuth()
+  const { user, username, displayName } = useAuth()
   const [game, setGame] = useState(null)
   const [totalScores, setTotalScores] = useState({})
   const [loading, setLoading] = useState(true)
@@ -141,7 +155,19 @@ export function ResultsScreen() {
     setRematching(true)
     try {
       const newGameId = uuidv4()
-      await setDoc(doc(db, 'games', newGameId), { createdBy: user.uid, username, players: game.players, roundLength: game.roundLength || 5, currentRound: 1, status: 'active', createdAt: serverTimestamp() })
+      const joinCode = generateJoinCode()
+      const names = getPlayerNames(game.players)
+      const playersArray = names.map(name => {
+        const existing = (game.players || []).find(p => (typeof p === 'object' ? p.display_name : p) === name)
+        return typeof existing === 'object' ? existing : { uid: null, display_name: name }
+      })
+      const playerUidsList = playersArray.filter(p => p.uid).map(p => p.uid)
+      await setDoc(doc(db, 'games', newGameId), {
+        createdBy: user.uid, username,
+        players: playersArray, playerUids: playerUidsList,
+        roundLength: game.roundLength || 5, joinCode,
+        currentRound: 1, status: 'lobby', createdAt: serverTimestamp(),
+      })
       navigate(`/point-entry/${newGameId}`)
     } catch (err) { console.error('Rematch failed:', err); setRematching(false) }
   }
@@ -175,31 +201,34 @@ export function ResultsScreen() {
       setGame(gameData)
       const roundsSnap = await getDocs(collection(db, 'games', gameId, 'rounds'))
       const rounds = [], totals = {}
-      gameData.players.forEach(p => totals[p] = 0)
+      const names = getPlayerNames(gameData.players)
+      names.forEach(p => totals[p] = 0)
       roundsSnap.forEach(d => { const r = d.data(); rounds.push({ id: d.id, ...r }); Object.entries(r.scores).forEach(([p, s]) => { totals[p] = (totals[p] || 0) + s }) })
       rounds.sort((a, b) => parseInt(a.id) - parseInt(b.id))
-      setRoundData(rounds); setTotalScores(totals); setArchivedGameId(gameId); setArchiving(false); setLoading(false); loadAvatars(gameData.players)
+      setRoundData(rounds); setTotalScores(totals); setArchivedGameId(gameId); setArchiving(false); setLoading(false); loadAvatars(names)
     } catch (err) { console.error('Failed to load results:', err); setArchiving(false); setLoading(false) }
   }
 
+  const playerNames = useMemo(() => getPlayerNames(game?.players), [game?.players])
+
   const sortedPlayers = useMemo(() => {
     if (!game) return []
-    return game.players.map(name => ({ name, score: totalScores[name] || 0, avatar: playerAvatars[name] || null })).sort((a, b) => b.score - a.score)
-  }, [game, totalScores, playerAvatars])
+    return playerNames.map(name => ({ name, score: totalScores[name] || 0, avatar: playerAvatars[name] || null })).sort((a, b) => b.score - a.score)
+  }, [playerNames, totalScores, playerAvatars])
 
   const analytics = useMemo(() => {
     if (!game || sortedPlayers.length === 0) return null
     const numRounds = roundData.length, allScores = Object.values(totalScores), totalPoints = allScores.reduce((a, b) => a + b, 0)
-    const avgScore = numRounds > 0 ? (totalPoints / game.players.length).toFixed(1) : 0
+    const avgScore = numRounds > 0 ? (totalPoints / playerNames.length).toFixed(1) : 0
     let biggestLead = 0, leadLabel = ''
-    const runningTotals = {}; game.players.forEach(p => runningTotals[p] = 0)
+    const runningTotals = {}; playerNames.forEach(p => runningTotals[p] = 0)
     roundData.forEach((round, idx) => {
       Object.entries(round.scores || {}).forEach(([p, s]) => { runningTotals[p] = (runningTotals[p] || 0) + s })
       const vals = Object.values(runningTotals), max = Math.max(...vals), min = Math.min(...vals)
       if (max - min > biggestLead) { biggestLead = max - min; const leader = Object.keys(runningTotals).find(k => runningTotals[k] === max); leadLabel = `Round ${idx + 1}: ${leader} +${biggestLead}` }
     })
     const margin = sortedPlayers.length >= 2 ? sortedPlayers[0].score - sortedPlayers[1].score : sortedPlayers[0]?.score || 0
-    const playerConsistency = game.players.map(p => {
+    const playerConsistency = playerNames.map(p => {
       const pScores = roundData.map(r => r.scores?.[p] || 0), mean = pScores.length > 0 ? pScores.reduce((a, b) => a + b, 0) / pScores.length : 0
       const variance = pScores.length > 0 ? pScores.reduce((a, s) => a + (s - mean) ** 2, 0) / pScores.length : 0
       return { name: p, stdDev: Math.sqrt(variance).toFixed(1), avg: mean.toFixed(1), avatar: playerAvatars[p] || null }
@@ -209,11 +238,11 @@ export function ResultsScreen() {
     let maxComeback = 0, comebackPlayer = ''
     roundData.forEach((round, idx) => {
       Object.entries(round.scores || {}).forEach(([p, s]) => {
-        const running = {}; game.players.forEach(pl => running[pl] = 0)
+        const running = {}; playerNames.forEach(pl => running[pl] = 0)
         for (let r = 0; r <= idx; r++) Object.entries(roundData[r].scores || {}).forEach(([pl, sc]) => { running[pl] = (running[pl] || 0) + sc })
         const sorted = Object.entries(running).sort(([, a], [, b]) => b - a), rank = sorted.findIndex(([n]) => n === p)
         if (rank === 0 && idx > 0) {
-          const prevRunning = {}; game.players.forEach(pl => prevRunning[pl] = 0)
+          const prevRunning = {}; playerNames.forEach(pl => prevRunning[pl] = 0)
           for (let r = 0; r < idx; r++) Object.entries(roundData[r].scores || {}).forEach(([pl, sc]) => { prevRunning[pl] = (prevRunning[pl] || 0) + sc })
           const prevSorted = Object.entries(prevRunning).sort(([, a], [, b]) => b - a), prevRank = prevSorted.findIndex(([n]) => n === p)
           if (prevRank > 0) { const deficit = prevSorted[0][1] - prevSorted.find(([n]) => n === p)[1]; if (deficit > maxComeback) { maxComeback = deficit; comebackPlayer = p } }
@@ -221,7 +250,7 @@ export function ResultsScreen() {
       })
     })
     return { numRounds, totalPoints, avgScore, biggestLead, leadLabel, margin, playerConsistency, highestRoundScore, highestRoundPlayer, highestRoundNum, maxComeback, comebackPlayer }
-  }, [game, sortedPlayers, roundData, totalScores, playerAvatars])
+  }, [playerNames, sortedPlayers, roundData, totalScores, playerAvatars])
 
   if (loading) return <LoadingSkeleton />
 
