@@ -15,20 +15,13 @@ export function HistoryDetailScreen() {
   const [game, setGame] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadGameDetail()
-  }, [gameId])
+  useEffect(() => { loadGameDetail() }, [gameId])
 
   const loadGameDetail = async () => {
     try {
       const token = await user.getIdToken()
-      const res = await fetch(`${API_BASE}/history/${username}/${gameId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.status === 404) {
-        navigate('/history')
-        return
-      }
+      const res = await fetch(`${API_BASE}/history/${username}/${gameId}`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.status === 404) { navigate('/history'); return }
       if (!res.ok) throw new Error('Failed to load game')
       const data = await res.json()
       setGame(data)
@@ -54,68 +47,69 @@ export function HistoryDetailScreen() {
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -18 }}
-      className="min-h-screen bg-bg-primary px-4 py-8"
+      style={{ minHeight: 'calc(100vh - 48px)', background: '#7a8aba', padding: '16px' }}
     >
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-8 pr-20">
-          <button
-            onClick={() => navigate('/history', { replace: true })}
-            className="w-11 h-11 rounded-xl bg-bg-elevated border border-ui-border text-text-secondary hover:text-text-primary hover:border-accent-primary transition-all shadow-sm flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-primary"
-            aria-label="Back to history"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M15 19l-7-7 7-7" />
-            </svg>
+      <div style={{ maxWidth: '830px', margin: '0 auto' }}>
+        {/* Back + Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+          <button onClick={() => navigate('/history', { replace: true })} className="ds-btn-secondary" style={{ padding: '8px 12px', fontSize: '12px' }}>
+            ← BACK
           </button>
-          <div>
-            <h1 className="font-display text-display-md text-text-primary">Game Detail</h1>
-            <p className="text-text-secondary text-sm font-medium">
-              {game.played_at ? new Date(game.played_at).toLocaleDateString('en-US', {
-                weekday: 'short', month: 'long', day: 'numeric', year: 'numeric'
-              }) : ''}
-            </p>
-          </div>
         </div>
 
-        <div className="grid lg:grid-cols-[0.82fr_1.18fr] gap-6 items-start">
-          <div className="space-y-5">
-            {game.winner && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.97, y: 12 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                className="relative p-6 rounded-3xl bg-accent-primary text-white overflow-hidden shadow-elevated"
-              >
-                <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
-                <div className="relative z-10">
-                  <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/80 mb-3">Winner</p>
-                  <p className="font-display font-black text-4xl leading-none mb-4">{game.winner}</p>
-                  <div className="flex items-end justify-between">
-                    <p className="text-white/80 text-sm font-medium">Archived champion</p>
-                    <div className="text-right">
-                      <p className="font-mono font-extrabold text-4xl tabular-nums">{winnerScore}</p>
-                      <p className="text-xs text-white/80 font-bold uppercase tracking-wider">points</p>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
+        {/* Winner banner */}
+        {game.winner && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            style={{
+              background: '#f68d1f',
+              borderTop: '1px solid rgba(255,255,255,0.35)',
+              borderBottom: '3px solid rgba(0,0,0,0.25)',
+              borderRadius: '0',
+              padding: '24px',
+              color: '#ffffff',
+              marginBottom: '12px',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ position: 'absolute', right: '-40px', top: '-40px', width: '160px', height: '160px', borderRadius: '9999px', background: 'rgba(255,255,255,0.1)', pointerEvents: 'none' }} />
+            <p style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.25em', opacity: 0.8, margin: '0 0 8px 0' }}>WINNER</p>
+            <p style={{ fontFamily: 'Arial Black, Arial', fontSize: '28px', fontWeight: '900', lineHeight: '1', margin: '0 0 16px 0' }}>{game.winner}</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <p style={{ fontSize: '12px', opacity: 0.8, margin: 0 }}>Archived champion</p>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontFamily: 'Arial Black, Arial', fontSize: '32px', fontWeight: '900', lineHeight: '1', margin: 0, fontVariantNumeric: 'tabular-nums' }}>{winnerScore}</p>
+                <p style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.8, margin: '4px 0 0 0' }}>POINTS</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
-            <div className="card p-5">
-              <h3 className="section-label mb-4">Final Standings</h3>
-              <div className="space-y-2">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px', alignItems: 'start' }}>
+          {/* Left: Final Standings */}
+          <div className="ds-form-panel" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="section-label-bar">≡ FINAL STANDINGS</div>
+            <div style={{ padding: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {sortedPlayers.map((name, i) => (
-                  <div key={name} className={`flex items-center gap-3 py-3 px-3 rounded-xl border transition-colors ${
-                    i === 0 ? 'bg-accent-primary/10 border-accent-primary/20' : 'bg-bg-primary border-ui-border'
-                  }`}>
-                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs font-mono ${
-                      i === 0 ? 'bg-accent-primary text-white' : 'bg-bg-secondary text-text-muted border border-ui-border'
-                    }`}>
-                      #{i + 1}
-                    </span>
-                    <span className={`flex-1 font-bold text-sm ${i === 0 ? 'text-text-primary' : 'text-text-secondary'}`}>{name}</span>
-                    <span className={`font-mono font-bold text-base tabular-nums ${
-                      i === 0 ? 'text-accent-primary' : 'text-text-primary'
-                    }`}>
+                  <div key={name} style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '8px 12px',
+                    background: i === 0 ? 'rgba(246, 141, 31, 0.1)' : i % 2 === 0 ? '#ffffff' : 'transparent',
+                    borderBottom: '1px solid rgba(90, 95, 140, 0.15)',
+                  }}>
+                    <span style={{
+                      width: '24px', height: '24px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: i === 0 ? '#f68d1f' : '#dedede',
+                      color: i === 0 ? '#ffffff' : '#60619c',
+                      fontSize: '9px', fontWeight: '700',
+                      fontFamily: 'Arial, monospace',
+                    }}>#{i + 1}</span>
+                    <span style={{ flex: 1, fontWeight: '700', fontSize: '12px', color: i === 0 ? '#21242e' : '#3d4f97' }}>{name}</span>
+                    <span style={{ fontFamily: 'Arial, monospace', fontWeight: '700', fontSize: '12px', color: i === 0 ? '#f68d1f' : '#21242e', fontVariantNumeric: 'tabular-nums' }}>
                       {finalScores[name] || 0}
                     </span>
                   </div>
@@ -124,49 +118,38 @@ export function HistoryDetailScreen() {
             </div>
           </div>
 
+          {/* Right: Round-by-Round Table */}
           {rounds.length > 0 && (
-            <div className="card p-0 overflow-hidden">
-              <div className="px-5 py-4 border-b border-ui-border bg-bg-secondary">
-                <h3 className="section-label">Round-by-Round</h3>
-                <p className="text-xs text-text-muted mt-1 font-medium">Every score, preserved exactly as played.</p>
+            <div className="ds-form-panel" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="section-label-bar">
+                ≡ ROUND-BY-ROUND
+                <span style={{ marginLeft: 'auto', fontSize: '9px', fontWeight: '400', letterSpacing: '0', textTransform: 'none', opacity: 0.7 }}>Every score, preserved.</span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[520px]">
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', minWidth: '400px', borderCollapse: 'collapse', fontSize: '11px' }}>
                   <thead>
-                    <tr className="bg-bg-primary border-b border-ui-border">
-                      <th className="text-left py-3 px-4 text-text-muted font-bold text-[11px] uppercase tracking-wider">Round</th>
+                    <tr style={{ background: '#dedede', borderBottom: '2px solid #3d4f97' }}>
+                      <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#60619c' }}>ROUND</th>
                       {sortedPlayers.map(name => (
-                        <th key={name} className="text-right py-3 px-4 text-text-muted font-bold text-[11px] uppercase tracking-wider">
-                          {name}
-                        </th>
+                        <th key={name} style={{ textAlign: 'right', padding: '8px 12px', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#60619c' }}>{name}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {rounds.map((round, i) => (
-                      <motion.tr
-                        key={i}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: i * 0.025 }}
-                        className="border-b border-ui-border odd:bg-bg-elevated even:bg-bg-secondary/40 hover:bg-accent-primary/5 transition-colors"
-                      >
-                        <td className="py-3 px-4 text-text-secondary font-mono text-xs font-bold">
-                          {round.round_number || i + 1}
-                        </td>
+                      <tr key={i} style={{ borderBottom: '1px solid rgba(90, 95, 140, 0.15)', background: i % 2 === 0 ? '#ffffff' : 'rgba(222, 222, 222, 0.4)' }}>
+                        <td style={{ padding: '8px 12px', fontFamily: 'Arial, monospace', fontSize: '10px', fontWeight: '700', color: '#60619c' }}>{round.round_number || i + 1}</td>
                         {sortedPlayers.map(name => (
-                          <td key={name} className="py-3 px-4 text-right font-mono text-text-primary text-xs tabular-nums font-medium">
+                          <td key={name} style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'Arial, monospace', fontSize: '11px', color: '#21242e', fontVariantNumeric: 'tabular-nums' }}>
                             {round.scores?.[name] ?? 0}
                           </td>
                         ))}
-                      </motion.tr>
+                      </tr>
                     ))}
-                    <tr className="border-t-2 border-accent-primary/30 bg-accent-primary/10 font-bold">
-                      <td className="py-3 px-4 text-accent-primary text-xs font-bold uppercase tracking-wider">Total</td>
+                    <tr style={{ borderTop: '2px solid rgba(246, 141, 31, 0.3)', background: 'rgba(246, 141, 31, 0.08)' }}>
+                      <td style={{ padding: '8px 12px', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#f68d1f' }}>TOTAL</td>
                       {sortedPlayers.map(name => (
-                        <td key={name} className={`py-3 px-4 text-right font-mono text-xs tabular-nums ${
-                          name === game.winner ? 'text-accent-primary font-extrabold' : 'text-text-primary'
-                        }`}>
+                        <td key={name} style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'Arial, monospace', fontSize: '11px', fontWeight: name === game.winner ? '900' : '700', color: name === game.winner ? '#f68d1f' : '#21242e', fontVariantNumeric: 'tabular-nums' }}>
                           {finalScores[name] || 0}
                         </td>
                       ))}
@@ -178,14 +161,9 @@ export function HistoryDetailScreen() {
           )}
         </div>
 
-        <div className="flex justify-center mt-8">
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            whileHover={{ y: -2 }}
-            onClick={() => navigate('/history')}
-            className="btn-secondary px-6 text-sm"
-          >
-            Back to History
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => navigate('/history')} className="ds-btn-secondary" style={{ padding: '10px 24px' }}>
+            ← BACK TO HISTORY
           </motion.button>
         </div>
       </div>

@@ -6,17 +6,15 @@ import { useToast } from '../contexts/ToastContext'
 import { AVATARS } from '../config/avatars'
 
 export function ProfileScreen() {
-  const { user, username, avatar, setAvatar } = useAuth()
+  const { user, username, avatar, setAvatar, logout } = useAuth()
   const { showSuccess, showError } = useToast()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [selected, setSelected] = useState(avatar || null)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   const handleSave = async () => {
-    if (!selected) {
-      showError('Pick an avatar first')
-      return
-    }
+    if (!selected) { showError('Pick an avatar first'); return }
     setSaving(true)
     const result = await setAvatar(selected)
     setSaving(false)
@@ -28,45 +26,60 @@ export function ProfileScreen() {
     }
   }
 
+  const handleLogout = async () => {
+    try {
+      await logout()
+      localStorage.clear()
+      navigate('/login')
+    } catch (err) {
+      showError('Logout failed')
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-warm-50 px-4 py-5">
-      <div className="max-w-md mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-5">
-          <button onClick={() => navigate('/name-input')} className="btn-ghost text-sm p-2">
-            ←
-          </button>
-          <div>
-            <h1 className="font-display text-display-sm text-warm-900">Profile</h1>
-            <p className="text-warm-400 text-sm">Choose your avatar</p>
-          </div>
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -18 }}
+      style={{ minHeight: 'calc(100vh - 48px)', background: '#7a8aba', padding: '16px' }}
+    >
+      <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+        {/* Section Label Bar */}
+        <div className="section-label-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <span style={{ fontSize: '14px' }}>👤</span>
+          PROFILE
+          <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: '400', letterSpacing: '0', textTransform: 'none' }}>Choose your avatar</span>
         </div>
 
         {/* Current User */}
-        <div className="card p-4 mb-5 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden bg-primary-100 flex items-center justify-center flex-shrink-0 ring-2 ring-primary-200/50 ring-offset-2 ring-offset-white">
+        <div className="ds-form-panel" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px', padding: '16px' }}>
+          <div style={{
+            width: '48px', height: '48px',
+            overflow: 'hidden',
+            background: '#3d4f97',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+            border: '2px solid #ecab37',
+            borderRadius: '0',
+          }}>
             {selected ? (
-              <img
-                src={AVATARS.find(a => a.id === selected)?.file}
-                alt={selected}
-                className="w-full h-full object-cover"
-              />
+              <img src={AVATARS.find(a => a.id === selected)?.file} alt={selected} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <span className="text-xl font-bold text-primary-600">
+              <span style={{ color: '#ecab37', fontSize: '18px', fontWeight: '900' }}>
                 {username?.[0]?.toUpperCase() || '?'}
               </span>
             )}
           </div>
           <div>
-            <p className="font-display font-bold text-warm-900">{user?.displayName || username}</p>
-            <p className="text-warm-400 text-xs font-medium">@{username}</p>
+            <p style={{ fontFamily: 'Arial Black, Arial', fontSize: '14px', fontWeight: '900', color: '#21242e', margin: '0 0 2px 0' }}>{user?.displayName || username}</p>
+            <p style={{ fontSize: '10px', fontWeight: '700', color: '#60619c', margin: 0 }}>@{username}</p>
           </div>
         </div>
 
         {/* Avatar Grid */}
-        <div className="card p-4 mb-5">
-          <label className="section-label mb-3 block">Pick Your Character</label>
-          <div className="grid grid-cols-4 gap-2.5">
+        <div className="ds-form-panel" style={{ padding: 0, overflow: 'hidden', marginBottom: '12px' }}>
+          <div className="section-label-bar">≡ PICK YOUR CHARACTER</div>
+          <div style={{ padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
             {AVATARS.map(avatarItem => {
               const isSelected = selected === avatarItem.id
               return (
@@ -74,37 +87,26 @@ export function ProfileScreen() {
                   key={avatarItem.id}
                   whileTap={{ scale: 0.92 }}
                   onClick={() => setSelected(avatarItem.id)}
-                  className={`flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all duration-150 ${
-                    isSelected
-                      ? 'bg-primary-50 border-2 border-primary-400 shadow-sm shadow-primary-200/40'
-                      : 'bg-warm-50/60 border-2 border-transparent hover:border-warm-200 hover:bg-warm-50'
-                  }`}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+                    padding: '8px',
+                    background: isSelected ? 'rgba(246, 141, 31, 0.1)' : '#ffffff',
+                    border: isSelected ? '2px solid #f68d1f' : '2px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.1s',
+                  }}
                 >
-                  <div className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center transition-all ${
-                    isSelected ? 'ring-2 ring-primary-400 ring-offset-1 ring-offset-primary-50' : ''
-                  }`}>
-                    <img
-                      src={avatarItem.file}
-                      alt={avatarItem.name}
-                      className="w-full h-full object-cover"
-                    />
+                  <div style={{
+                    width: '40px', height: '40px',
+                    overflow: 'hidden',
+                    borderRadius: '0',
+                    border: isSelected ? '2px solid #f68d1f' : '1px solid #5a5f8c',
+                  }}>
+                    <img src={avatarItem.file} alt={avatarItem.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
-                  <span className={`text-[10px] font-medium truncate w-full text-center ${
-                    isSelected ? 'text-primary-700' : 'text-warm-500'
-                  }`}>
+                  <span style={{ fontSize: '9px', fontWeight: '700', color: isSelected ? '#f68d1f' : '#60619c', textTransform: 'uppercase', letterSpacing: '0.3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center' }}>
                     {avatarItem.name}
                   </span>
-                  {isSelected && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="w-4 h-4 rounded-full bg-primary-500 text-white flex items-center justify-center -mt-0.5"
-                    >
-                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </motion.div>
-                  )}
                 </motion.button>
               )
             })}
@@ -116,19 +118,44 @@ export function ProfileScreen() {
           whileTap={{ scale: 0.97 }}
           onClick={handleSave}
           disabled={!selected || saving}
-          className="btn-primary w-full"
+          className="ds-btn-submit"
+          style={{ width: '100%', marginBottom: '12px' }}
         >
-          {saving ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-              </svg>
-              Saving…
-            </span>
-          ) : '💾 Save Avatar'}
+          {saving ? 'SAVING...' : '💾 SAVE AVATAR'}
         </motion.button>
+
+        {/* Logout */}
+        {!showLogoutConfirm ? (
+          <div style={{ textAlign: 'center', marginTop: '16px' }}>
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="ds-btn-secondary"
+              style={{ fontSize: '10px', padding: '10px 24px' }}
+            >
+              LOG OUT
+            </button>
+          </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="ds-form-panel"
+            style={{ textAlign: 'center', padding: '16px', background: 'rgba(230, 0, 18, 0.05)', borderTop: '2px solid #e60012' }}
+          >
+            <p style={{ fontSize: '11px', fontWeight: '700', color: '#21242e', marginBottom: '12px' }}>
+              Are you sure you want to log out?
+            </p>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+              <button onClick={() => setShowLogoutConfirm(false)} className="ds-btn-secondary" style={{ fontSize: '10px', padding: '8px 16px' }}>
+                CANCEL
+              </button>
+              <button onClick={handleLogout} className="ds-btn-submit" style={{ fontSize: '10px', padding: '8px 16px', background: '#e60012', borderBottomColor: 'rgba(0,0,0,0.3)' }}>
+                CONFIRM LOGOUT
+              </button>
+            </div>
+          </motion.div>
+        )}
       </div>
-    </div>
+    </motion.div>
   )
 }

@@ -11,7 +11,7 @@ import { HistoryDetailScreen } from './screens/HistoryDetailScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { LoadingSkeleton } from './components/LoadingSkeleton'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import ThemeToggle from './components/ThemeToggle'
+import { NavBar } from './components/NavBar'
 
 function PrivateRoute({ children }) {
   const { user, loading, username } = useAuth()
@@ -30,13 +30,12 @@ function PublicRoute({ children }) {
 
 export default function App() {
   const location = useLocation()
+  const isLogin = location.pathname === '/login'
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-bg-primary text-text-primary transition-colors duration-300">
-        <div className="fixed top-4 right-4 z-50">
-          <ThemeToggle />
-        </div>
+      <div className="min-h-screen" style={{ background: '#7a8aba' }}>
+        {!isLogin && <NavBar />}
         <AnimatePresence mode="wait" initial={false}>
           <Routes location={location} key={location.pathname}>
             <Route path="/login" element={

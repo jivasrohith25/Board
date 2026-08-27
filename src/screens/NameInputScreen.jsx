@@ -38,18 +38,9 @@ export function NameInputScreen() {
 
   const addPlayer = () => {
     const trimmed = nameInput.trim()
-    if (!trimmed) {
-      setError('Name cannot be empty')
-      return
-    }
-    if (trimmed.length > 20) {
-      setError('Name must be 20 characters or less')
-      return
-    }
-    if (players.some(p => p.toLowerCase() === trimmed.toLowerCase())) {
-      setError('This name is already added')
-      return
-    }
+    if (!trimmed) { setError('Name cannot be empty'); return }
+    if (trimmed.length > 20) { setError('Name must be 20 characters or less'); return }
+    if (players.some(p => p.toLowerCase() === trimmed.toLowerCase())) { setError('This name is already added'); return }
     setPlayers(prev => [...prev, trimmed])
     setNameInput('')
     setError('')
@@ -61,10 +52,7 @@ export function NameInputScreen() {
   }
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      addPlayer()
-    }
+    if (e.key === 'Enter') { e.preventDefault(); addPlayer() }
   }
 
   const adjustRoundLength = (delta) => {
@@ -74,17 +62,11 @@ export function NameInputScreen() {
   const handleStart = async () => {
     if (players.length < 2 || starting) return
     setStarting(true)
-
     try {
       const gameId = uuidv4()
       await setDoc(doc(db, 'games', gameId), {
-        createdBy: user.uid,
-        username: username,
-        players,
-        roundLength,
-        currentRound: 1,
-        status: 'active',
-        createdAt: serverTimestamp(),
+        createdBy: user.uid, username, players, roundLength,
+        currentRound: 1, status: 'active', createdAt: serverTimestamp(),
       })
       localStorage.removeItem(STORAGE_KEY)
       navigate(`/point-entry/${gameId}`)
@@ -97,208 +79,226 @@ export function NameInputScreen() {
 
   const canStart = players.length >= 2
 
+  const SectionHeader = ({ title, icon }) => (
+    <div className="section-label-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <span style={{ fontSize: '12px' }}>{icon}</span>
+      {title}
+    </div>
+  )
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className="min-h-screen bg-bg-primary px-4 py-6"
+      style={{
+        minHeight: 'calc(100vh - 48px)',
+        background: '#7a8aba',
+        padding: '0',
+      }}
     >
-      <div className="max-w-md mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="font-display text-display-sm text-text-primary">New Game</h1>
-            <p className="text-text-secondary text-sm">Add players to get started</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => navigate('/dice')}
-              className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl bg-bg-secondary border border-ui-border hover:bg-ui-border transition-colors shadow-sm"
-              title="Dice Roller"
-            >
-              <span className="text-xl">🎲</span>
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => navigate('/history')}
-              className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl bg-bg-secondary border border-ui-border hover:bg-ui-border transition-colors shadow-sm"
-              title="Game History"
-            >
-              <span className="text-xl">📜</span>
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => navigate('/profile')}
-              className="w-10 h-10 rounded-xl overflow-hidden border-2 border-ui-border hover:border-accent-primary transition-colors flex-shrink-0 shadow-sm ml-1"
-              title="Profile"
-            >
-              {avatar ? (
-                <img src={getAvatarUrl(avatar)} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-accent-primary/10 flex items-center justify-center text-xs font-bold text-accent-primary">
-                  {username?.[0]?.toUpperCase() || '?'}
-                </div>
-              )}
-            </motion.button>
-          </div>
-        </div>
+      <div style={{ maxWidth: '960px', margin: '0 auto', padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px', alignItems: 'start' }}>
 
-        {/* Name Input */}
-        <div className="card p-5 mb-4 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-accent-primary/5 rounded-bl-full pointer-events-none" />
-          <label className="section-label mb-3 block">Player Name</label>
-          <div className="flex gap-3 relative z-10">
-            <input
-              ref={inputRef}
-              type="text"
-              value={nameInput}
-              onChange={(e) => { setNameInput(e.target.value.slice(0, 20)); setError(''); }}
-              onKeyDown={handleKeyDown}
-              placeholder="Enter player name"
-              className={`input-field flex-1 text-lg ${error ? 'input-error' : ''}`}
-              maxLength={20}
-            />
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={addPlayer}
-              className="bg-bg-primary text-text-primary border-2 border-ui-border hover:border-accent-primary font-semibold px-6 py-3 rounded-xl transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
-            >
-              Add
-            </motion.button>
-          </div>
-          <AnimatePresence>
-            {error && (
-              <motion.p
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="text-status-error text-sm mt-3 font-medium"
-              >
-                {error}
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Player Chips */}
-        <div className="card p-5 mb-4 min-h-[96px]">
-          <div className="flex items-center justify-between mb-4">
-            <label className="section-label">Roster</label>
-            <span className="text-xs font-mono font-bold text-accent-primary bg-accent-primary/10 px-2.5 py-1 rounded-full">
-              {players.length} {players.length === 1 ? 'Player' : 'Players'}
-            </span>
-          </div>
-          {players.length === 0 ? (
-            <div className="h-12 flex items-center justify-center border-2 border-dashed border-ui-border rounded-xl">
-              <p className="text-text-muted text-sm font-medium">No players added yet</p>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2.5">
-              <AnimatePresence mode="popLayout">
-                {players.map((name, i) => (
-                  <motion.div
-                    key={name}
-                    layout
-                    initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.8, filter: 'blur(4px)' }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    className="flex items-center gap-2 pl-3 pr-1 py-1 bg-bg-primary border-2 border-ui-border rounded-lg shadow-sm hover:border-accent-primary transition-colors group"
-                  >
-                    <span className="text-text-primary font-medium">{name}</span>
-                    <button
-                      onClick={() => removePlayer(i)}
-                      className="w-6 h-6 flex items-center justify-center rounded-md bg-ui-border/50 text-text-muted hover:bg-status-error hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-status-error"
-                      aria-label={`Remove ${name}`}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M9 3L3 9M3 3L9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                  </motion.div>
-                ))}
+        {/* === PLAYER NAME Panel === */}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <div className="ds-form-panel" style={{ padding: 0, overflow: 'hidden' }}>
+            <SectionHeader title="PLAYER NAME" icon="≡" />
+            <div style={{ padding: '16px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={nameInput}
+                  onChange={(e) => { setNameInput(e.target.value.slice(0, 20)); setError(''); }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter player name"
+                  className="ds-input"
+                  style={{ flex: 1, height: 'auto', padding: '10px 12px', fontSize: '13px' }}
+                  maxLength={20}
+                />
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={addPlayer}
+                  className="ds-btn-primary"
+                  style={{ padding: '10px 20px', whiteSpace: 'nowrap' }}
+                >
+                  + ADD
+                </motion.button>
+              </div>
+              <AnimatePresence>
+                {error && (
+                  <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                    style={{ color: '#e60012', fontSize: '11px', marginTop: '8px', fontWeight: '700' }}>
+                    {error}
+                  </motion.p>
+                )}
               </AnimatePresence>
             </div>
-          )}
-        </div>
-
-        {/* Round Length */}
-        <div className="card p-5 mb-6">
-          <label className="section-label mb-4 block">Game Length</label>
-          <div className="flex items-center justify-between bg-bg-primary border border-ui-border rounded-xl p-2 shadow-inner">
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => adjustRoundLength(-1)}
-              disabled={roundLength <= 1}
-              className="w-12 h-12 rounded-lg bg-bg-elevated border border-ui-border hover:border-accent-primary text-text-primary flex items-center justify-center transition-all disabled:opacity-40 shadow-sm"
-              aria-label="Decrease rounds"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3.33331 8H12.6666" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </motion.button>
-            <div className="flex flex-col items-center justify-center w-24">
-              <span className="text-4xl font-display font-extrabold text-accent-primary font-mono tabular-nums leading-none">
-                {roundLength}
-              </span>
-              <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-1">Rounds</span>
-            </div>
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => adjustRoundLength(1)}
-              disabled={roundLength >= 99}
-              className="w-12 h-12 rounded-lg bg-bg-elevated border border-ui-border hover:border-accent-primary text-text-primary flex items-center justify-center transition-all disabled:opacity-40 shadow-sm"
-              aria-label="Increase rounds"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8 3.33331V12.6666M3.33331 8H12.6666" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </motion.button>
           </div>
         </div>
 
-        {/* Start Button */}
-        <div className="relative group mt-8">
+        {/* === ROSTER Panel === */}
+        <div>
+          <div className="ds-form-panel" style={{ padding: 0, overflow: 'hidden', minHeight: '200px' }}>
+            <SectionHeader title="ROSTER" icon="≡" />
+            <div style={{ padding: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#3d4f97' }}>
+                  {players.length} {players.length === 1 ? 'PLAYER' : 'PLAYERS'}
+                </span>
+                {players.length >= 2 && (
+                  <span style={{ fontSize: '10px', fontWeight: '700', color: '#15803d', textTransform: 'uppercase' }}>✓ READY</span>
+                )}
+              </div>
+
+              {players.length === 0 ? (
+                <div style={{
+                  height: '80px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px dashed #5a5f8c',
+                  borderRadius: '2px',
+                  background: 'rgba(255,255,255,0.3)',
+                }}>
+                  <p style={{ fontSize: '11px', fontWeight: '700', color: '#60619c', textTransform: 'uppercase', letterSpacing: '0.5px' }}>NO PLAYERS ADDED</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  <AnimatePresence mode="popLayout">
+                    {players.map((name, i) => (
+                      <motion.div
+                        key={name}
+                        layout
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '4px 6px 4px 10px',
+                          background: '#ffffff',
+                          border: '1px solid #5a5f8c',
+                          borderTop: '1px solid rgba(255,255,255,0.6)',
+                          borderRadius: '2px',
+                        }}
+                      >
+                        <span style={{ fontSize: '11px', fontWeight: '700', color: '#21242e' }}>{name}</span>
+                        <button
+                          onClick={() => removePlayer(i)}
+                          style={{
+                            width: '18px', height: '18px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: '#dedede', border: 'none', borderRadius: '2px',
+                            cursor: 'pointer', padding: 0, color: '#60619c',
+                            fontSize: '12px', fontWeight: '700', lineHeight: 1,
+                          }}
+                          aria-label={`Remove ${name}`}
+                        >
+                          ×
+                        </button>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* === GAME LENGTH Panel === */}
+        <div>
+          <div className="ds-form-panel" style={{ padding: 0, overflow: 'hidden' }}>
+            <SectionHeader title="GAME LENGTH" icon="≡" />
+            <div style={{ padding: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => adjustRoundLength(-1)}
+                  disabled={roundLength <= 1}
+                  className="ds-btn-secondary"
+                  style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}
+                  aria-label="Decrease rounds"
+                >
+                  −
+                </motion.button>
+                <div style={{ textAlign: 'center', minWidth: '60px' }}>
+                  <span style={{
+                    fontFamily: 'Arial Black, Arial',
+                    fontSize: '36px', fontWeight: '900',
+                    color: '#f68d1f', lineHeight: '1',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {roundLength}
+                  </span>
+                  <div style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#60619c', marginTop: '4px' }}>ROUNDS</div>
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => adjustRoundLength(1)}
+                  disabled={roundLength >= 99}
+                  className="ds-btn-primary"
+                  style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}
+                  aria-label="Increase rounds"
+                >
+                  +
+                </motion.button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* === START BUTTON === */}
+        <div style={{ gridColumn: '1 / -1' }}>
           <motion.button
             whileTap={canStart ? { scale: 0.97 } : {}}
-            whileHover={canStart ? { y: -2 } : {}}
             onClick={handleStart}
             disabled={!canStart || starting}
-            className="btn-primary w-full py-4 text-lg font-display flex items-center justify-center gap-2 shadow-md disabled:shadow-none"
+            className="ds-btn-submit"
+            style={{
+              width: '100%',
+              padding: '20px 24px',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              opacity: !canStart || starting ? 0.5 : 1,
+            }}
           >
             {starting ? (
               <>
-                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                 </svg>
-                Creating game...
+                CREATING GAME...
               </>
             ) : (
-              <>
-                <span className="text-xl">🎮</span> Start Game
-              </>
+              <>🎮 START GAME</>
             )}
           </motion.button>
 
           <AnimatePresence>
             {!canStart && players.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute -top-8 w-full text-center"
-              >
-                <span className="text-xs font-medium text-text-muted bg-bg-secondary px-3 py-1 rounded-full border border-ui-border shadow-sm">
-                  Add at least 2 players to start
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                style={{ textAlign: 'center', marginTop: '8px' }}>
+                <span style={{
+                  fontSize: '10px', fontWeight: '700', color: '#60619c',
+                  textTransform: 'uppercase', letterSpacing: '0.5px',
+                  background: '#2a2e3a', padding: '4px 12px', display: 'inline-block',
+                }}>
+                  ADD AT LEAST 2 PLAYERS
                 </span>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </div>
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </motion.div>
   )
 }

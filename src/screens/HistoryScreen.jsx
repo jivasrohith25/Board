@@ -4,7 +4,6 @@ import { motion } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
-import { EmptyState } from '../components/EmptyState'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
@@ -15,16 +14,12 @@ export function HistoryScreen() {
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadHistory()
-  }, [username])
+  useEffect(() => { loadHistory() }, [username])
 
   const loadHistory = async () => {
     try {
       const token = await user.getIdToken()
-      const res = await fetch(`${API_BASE}/history/${username}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await fetch(`${API_BASE}/history/${username}`, { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error('Failed to load history')
       const data = await res.json()
       setGames(data.games || [])
@@ -43,43 +38,29 @@ export function HistoryScreen() {
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -18 }}
-      className="min-h-screen bg-bg-primary px-4 py-8"
+      style={{ minHeight: 'calc(100vh - 48px)', background: '#7a8aba', padding: '16px' }}
     >
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center gap-4 mb-8 pr-20">
-          <button
-            onClick={() => navigate('/name-input')}
-            className="w-11 h-11 rounded-xl bg-bg-elevated border border-ui-border text-text-secondary hover:text-text-primary hover:border-accent-primary transition-all shadow-sm flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-primary"
-            aria-label="Back to new game"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div>
-            <h1 className="font-display text-display-md text-text-primary">Game History</h1>
-            <p className="text-text-secondary text-sm font-medium">Past wins, close calls, and receipts.</p>
-          </div>
+      <div style={{ maxWidth: '830px', margin: '0 auto' }}>
+        {/* Section Label Bar */}
+        <div className="section-label-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <span style={{ fontSize: '14px' }}>📜</span>
+          GAME HISTORY
+          <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: '400', letterSpacing: '0', textTransform: 'none' }}>
+            Past wins, close calls, and receipts.
+          </span>
         </div>
 
         {games.length === 0 ? (
-          <EmptyState
-            icon="📜"
-            title="No games yet"
-            description="Start a game and your finished sessions will live here."
-            action={
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                whileHover={{ y: -2 }}
-                onClick={() => navigate('/name-input')}
-                className="btn-primary"
-              >
-                Start a Game
-              </motion.button>
-            }
-          />
+          <div className="ds-form-panel" style={{ textAlign: 'center', padding: '48px 24px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📜</div>
+            <h3 style={{ fontFamily: 'Arial Black, Arial', fontSize: '18px', fontWeight: '900', color: '#21242e', marginBottom: '8px' }}>NO GAMES YET</h3>
+            <p style={{ fontSize: '12px', color: '#3d4f97', marginBottom: '24px' }}>Start a game and your finished sessions will live here.</p>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => navigate('/name-input')} className="ds-btn-submit">
+              START A GAME
+            </motion.button>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {games.map((game, i) => {
               const scores = Object.entries(game.final_scores || {}).sort(([, a], [, b]) => b - a)
               const topScore = scores[0]?.[1] || 0
@@ -89,53 +70,74 @@ export function HistoryScreen() {
               return (
                 <motion.button
                   key={game.id}
-                  initial={{ opacity: 0, y: 14, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.035, type: 'spring', stiffness: 360, damping: 28 }}
-                  whileHover={{ y: -3 }}
                   whileTap={{ scale: 0.99 }}
                   onClick={() => navigate(`/history/${game.id}`)}
-                  className="group relative w-full text-left overflow-hidden rounded-3xl bg-bg-elevated border border-ui-border p-5 shadow-card hover:shadow-elevated hover:border-accent-primary/35 transition-all focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-primary"
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    background: '#dedede',
+                    border: 'none',
+                    borderTop: '1px solid rgba(255,255,255,0.5)',
+                    borderLeft: '1px solid rgba(255,255,255,0.3)',
+                    borderBottom: '2px solid #3d4f97',
+                    borderRight: '1px solid #3d4f97',
+                    borderRadius: '4px',
+                    padding: '16px',
+                    cursor: 'pointer',
+                  }}
                 >
-                  <div className="absolute inset-y-0 right-0 w-28 bg-accent-primary/5 group-hover:bg-accent-primary/10 transition-colors pointer-events-none" />
-                  <div className="relative z-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                     <div>
-                      <p className="text-xs text-text-muted font-bold uppercase tracking-wider mb-1">
-                        {game.played_at ? new Date(game.played_at).toLocaleDateString('en-US', {
-                          month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
-                        }) : 'Unknown date'}
+                      <p style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#60619c', margin: '0 0 4px 0' }}>
+                        {game.played_at ? new Date(game.played_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'UNKNOWN DATE'}
                       </p>
-                      <h2 className="font-display text-2xl font-black text-text-primary tracking-tight">
+                      <h2 style={{ fontFamily: 'Arial Black, Arial', fontSize: '16px', fontWeight: '900', color: '#21242e', margin: 0 }}>
                         {game.winner || 'Unknown'} won
                       </h2>
                     </div>
-                    <div className="flex sm:flex-col items-start sm:items-end gap-2">
-                      <span className="inline-flex items-center rounded-full bg-accent-primary/10 text-accent-primary border border-accent-primary/20 px-3 py-1 text-xs font-bold">
-                        {topScore} pts
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{
+                        display: 'inline-block',
+                        background: '#f68d1f',
+                        color: '#ffffff',
+                        fontSize: '10px',
+                        fontWeight: '700',
+                        padding: '3px 10px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}>
+                        {topScore} PTS
                       </span>
                       {scores.length > 1 && (
-                        <span className="text-xs text-text-muted font-medium">
-                          +{margin} margin
-                        </span>
+                        <p style={{ fontSize: '10px', color: '#60619c', margin: '4px 0 0 0', fontWeight: '700' }}>+{margin} margin</p>
                       )}
                     </div>
                   </div>
 
-                  <div className="relative z-10 flex flex-wrap gap-2 mb-4">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px' }}>
                     {(game.players || []).map(p => (
-                      <span key={p} className="text-xs bg-bg-secondary text-text-secondary px-3 py-1 rounded-lg font-bold border border-ui-border">
+                      <span key={p} style={{
+                        fontSize: '9px', fontWeight: '700',
+                        background: '#ffffff', color: '#3d4f97',
+                        padding: '3px 8px',
+                        border: '1px solid #5a5f8c',
+                        textTransform: 'uppercase', letterSpacing: '0.3px',
+                      }}>
                         {p}
                       </span>
                     ))}
                   </div>
 
                   {scores.length > 0 && (
-                    <div className="relative z-10 grid gap-2">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {scores.slice(0, 4).map(([name, score], index) => (
-                        <div key={name} className="flex items-center gap-3 text-xs">
-                          <span className="w-6 font-mono font-bold text-text-muted">#{index + 1}</span>
-                          <span className="flex-1 font-medium text-text-secondary truncate">{name}</span>
-                          <span className="font-mono font-bold text-text-primary tabular-nums">{score}</span>
+                        <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px' }}>
+                          <span style={{ width: '24px', fontFamily: 'Arial, monospace', fontWeight: '700', color: '#60619c' }}>#{index + 1}</span>
+                          <span style={{ flex: 1, fontWeight: '700', color: '#3d4f97', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                          <span style={{ fontFamily: 'Arial, monospace', fontWeight: '700', color: '#21242e', fontVariantNumeric: 'tabular-nums' }}>{score}</span>
                         </div>
                       ))}
                     </div>

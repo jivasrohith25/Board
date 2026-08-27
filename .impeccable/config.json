@@ -20,6 +20,152 @@
         ],
         "createdAt": "2026-08-25T07:20:14.840Z",
         "reason": "Intentional body font paired with Outfit display face — Inter chosen for legibility in form inputs and small UI text"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "src/index.css"
+        ],
+        "createdAt": "2026-08-27T07:43:10.382Z",
+        "reason": "All 11 findings are intentional bevel depth effects: semi-transparent rgba overlays simulate the Y2K faceplate lighting (top highlight + bottom shadow per DESIGN.md Elevation & Depth section); darkened palette variants are hover/active interactive states"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "24px",
+        "files": [
+          "src/index.css"
+        ],
+        "createdAt": "2026-08-27T07:44:25.000Z",
+        "reason": "Score display typography for game scorekeeper app: 24px stat values are app-specific score numbers not covered by DESIGN.md (designed for nintendo.com content, not score UI)"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "src/screens/LoginScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T07:46:58.973Z",
+        "reason": "All display sizes extend the DESIGN.md display ramp for game-app context: 48-56px for decorative mascots/loading, 32px for the title wordmark, 18-20px for username display, 11-12px for buttons/labels (on-ramp). The DESIGN.md display token (44px) targets Nintendo.com hero wordmarks; this scorekeeper needs its own decorative scale for login chrome."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "src/screens/NameInputScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T07:48:34.619Z",
+        "reason": "App-specific display extensions: 36px counter, 18px interactive elements, 9px sub-label, 48px icon. Same pattern as LoginScreen — DESIGN.md ramp serves content pages, not game-app chrome."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#15803d",
+        "files": [
+          "src/screens/NameInputScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T07:48:34.752Z",
+        "reason": "Semantic success state green not in DESIGN.md palette — functional feedback color for roster-ready indicator"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "src/screens/HistoryScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T07:49:40.490Z",
+        "reason": "App-specific display extensions: 14px section icon, 18px title, 16px winner headline, 9-10px micro labels, 48px empty-state icon. Same sanctioned extension pattern."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "src/screens/HistoryDetailScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T07:50:36.306Z",
+        "reason": "App-specific display extensions: 28-32px winner scores, 9-10px table micro-labels, 16px section icon. Same sanctioned pattern."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "src/screens/ProfileScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T07:51:39.309Z",
+        "reason": "App display extensions: 14px username, 18px avatar initial, 9px micro labels. Same sanctioned pattern."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(0,0,0,0.3)",
+        "files": [
+          "src/screens/ProfileScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T07:51:39.449Z",
+        "reason": "Bevel bottom shadow on logout confirm button, same as index.css bevel depth vocabulary"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "src/screens/DicePage.jsx"
+        ],
+        "createdAt": "2026-08-27T07:52:39.108Z",
+        "reason": "App display extensions: 14px section icon, 48px dice result number. Same sanctioned pattern."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "src/screens/PointEntryScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T08:19:03.483Z"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "src/screens/ResultsScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T08:21:43.369Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#e6001f",
+        "files": [
+          "src/screens/PointEntryScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T08:23:06.007Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(0,0,0,0.3)",
+        "files": [
+          "src/screens/PointEntryScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T08:23:06.161Z"
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          "src/index.css"
+        ],
+        "createdAt": "2026-08-27T08:24:19.040Z"
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          "src/screens/LoginScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T08:24:19.196Z"
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          "src/screens/PointEntryScreen.jsx"
+        ],
+        "createdAt": "2026-08-27T08:24:19.342Z"
       }
     ]
   }

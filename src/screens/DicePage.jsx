@@ -14,10 +14,10 @@ const diceFaces = [
 function DiceFace({ value }) {
   const face = diceFaces[value - 1]
   return (
-    <svg viewBox="0 0 100 100" className="w-44 h-44 md:w-56 md:h-56 drop-shadow-md">
-      <rect x="2" y="2" width="96" height="96" rx="14" fill="white" stroke="#e8e0d8" strokeWidth="2" />
+    <svg viewBox="0 0 100 100" style={{ width: '160px', height: '160px' }}>
+      <rect x="2" y="2" width="96" height="96" rx="8" fill="#ffffff" stroke="#3d4f97" strokeWidth="3" />
       {face.dots.map((dot, i) => (
-        <circle key={i} cx={dot.x} cy={dot.y} r="9" fill="#3a3028" />
+        <circle key={i} cx={dot.x} cy={dot.y} r="9" fill="#21242e" />
       ))}
     </svg>
   )
@@ -31,24 +31,20 @@ export function DicePage() {
   const intervalRef = useRef(null)
 
   useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [])
 
   const rollDice = () => {
     if (rolling) return
     setRolling(true)
     setCurrentValue(null)
-
     let count = 0
     const maxCycles = 15 + Math.floor(Math.random() * 10)
     let delay = 50
 
-    intervalRef.current = setInterval(() => {
+    const tick = () => {
       count++
       setCurrentValue(Math.floor(Math.random() * 6) + 1)
-
       if (count >= maxCycles) {
         clearInterval(intervalRef.current)
         intervalRef.current = null
@@ -56,104 +52,91 @@ export function DicePage() {
         setCurrentValue(finalValue)
         setRollHistory(prev => [finalValue, ...prev].slice(0, 20))
         setRolling(false)
-      } else {
-        delay += 20
-        clearInterval(intervalRef.current)
-        intervalRef.current = setInterval(() => {
-          count++
-          setCurrentValue(Math.floor(Math.random() * 6) + 1)
-          if (count >= maxCycles) {
-            clearInterval(intervalRef.current)
-            intervalRef.current = null
-            const finalValue = Math.floor(Math.random() * 6) + 1
-            setCurrentValue(finalValue)
-            setRollHistory(prev => [finalValue, ...prev].slice(0, 20))
-            setRolling(false)
-          }
-        }, delay)
       }
+    }
+
+    intervalRef.current = setInterval(() => {
+      tick()
+      if (count >= maxCycles) return
+      delay += 20
+      clearInterval(intervalRef.current)
+      intervalRef.current = setInterval(tick, delay)
     }, delay)
   }
 
   return (
-    <div className="min-h-screen bg-warm-50 px-4 py-5">
-      <div className="max-w-md mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <button onClick={() => navigate(-1)} className="btn-ghost text-sm">
-            ← Back
-          </button>
-          <h1 className="font-display text-display-sm text-warm-900">🎲 Dice Roller</h1>
-          <div className="w-16" />
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -18 }}
+      style={{ minHeight: 'calc(100vh - 48px)', background: '#7a8aba', padding: '16px' }}
+    >
+      <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+        {/* Section Label Bar */}
+        <div className="section-label-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <span style={{ fontSize: '14px' }}>🎲</span>
+          DICE ROLLER
         </div>
 
-        {/* Dice */}
-        <div className="flex justify-center mb-6">
+        {/* Dice Panel */}
+        <div className="ds-form-panel" style={{ padding: '24px', textAlign: 'center', marginBottom: '12px' }}>
           <motion.div
-            animate={rolling ? {
-              rotate: [0, 10, -10, 10, -10, 0],
-              scale: [1, 1.05, 0.95, 1.05, 0.95, 1],
-            } : {}}
+            animate={rolling ? { rotate: [0, 10, -10, 10, -10, 0], scale: [1, 1.05, 0.95, 1.05, 0.95, 1] } : {}}
             transition={{ duration: 0.5, repeat: rolling ? Infinity : 0 }}
+            style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}
           >
             {currentValue ? (
               <DiceFace value={currentValue} />
             ) : (
-              <div className="w-44 h-44 md:w-56 md:h-56 rounded-2xl border-2 border-dashed border-warm-200 flex items-center justify-center">
-                <span className="text-warm-300 text-sm">Roll to see a number</span>
+              <div style={{
+                width: '160px', height: '160px',
+                border: '2px dashed #5a5f8c',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(255,255,255,0.3)',
+              }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#60619c', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ROLL TO SEE A NUMBER</span>
               </div>
             )}
           </motion.div>
+
+          {currentValue && !rolling && (
+            <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}>
+              <span style={{ fontFamily: 'Arial Black, Arial', fontSize: '48px', fontWeight: '900', color: '#f68d1f', lineHeight: '1' }}>{currentValue}</span>
+            </motion.div>
+          )}
         </div>
 
-        {/* Result Display */}
-        {currentValue && !rolling && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center mb-6"
-          >
-            <span className="text-6xl font-display font-extrabold text-primary-600 font-mono">{currentValue}</span>
-          </motion.div>
-        )}
-
         {/* Roll Button */}
-        <div className="flex justify-center mb-8">
+        <div style={{ textAlign: 'center', marginBottom: '12px' }}>
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={rollDice}
             disabled={rolling}
-            className="btn-primary text-base px-10 py-3.5 font-display"
+            className="ds-btn-submit"
+            style={{ padding: '16px 48px', fontSize: '13px' }}
           >
-            {rolling ? (
-              <span className="flex items-center gap-2">
-                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
-                Rolling…
-              </span>
-            ) : '🎲 Roll!'}
+            {rolling ? 'ROLLING...' : '🎲 ROLL!'}
           </motion.button>
         </div>
 
         {/* Roll History */}
         {rollHistory.length > 0 && (
-          <div className="card p-4">
-            <h3 className="section-label mb-2.5">
-              History ({rollHistory.length})
-            </h3>
-            <div className="flex flex-wrap gap-1.5">
+          <div className="ds-form-panel" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="section-label-bar">≡ HISTORY ({rollHistory.length})</div>
+            <div style={{ padding: '12px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
               {rollHistory.map((val, i) => (
                 <motion.span
                   key={`${i}-${val}`}
                   initial={i === 0 ? { opacity: 0, scale: 0.5 } : {}}
                   animate={{ opacity: 1, scale: 1 }}
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold font-mono text-sm ${
-                    i === 0
-                      ? 'bg-primary-500 text-white shadow-sm shadow-primary-300/30'
-                      : 'bg-warm-100 text-warm-500'
-                  }`}
+                  style={{
+                    width: '32px', height: '32px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: i === 0 ? '#f68d1f' : '#dedede',
+                    color: i === 0 ? '#ffffff' : '#60619c',
+                    fontSize: '12px', fontWeight: '700',
+                    fontFamily: 'Arial, monospace',
+                  }}
                 >
                   {val}
                 </motion.span>
@@ -162,6 +145,6 @@ export function DicePage() {
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
