@@ -6,7 +6,7 @@ export function FireworksBackground() {
   const animationId = useRef(null)
 
   const createParticle = useCallback((canvas) => {
-    const colors = ['#f19b4a', '#ed8027', '#e06416', '#fad8ad', '#f6bd7b', '#ef4444', '#fca5a5']
+    const colors = ['#ee1f66', '#ff33e0', '#ffc400', '#ffffff', '#33beff']
     return {
       x: Math.random() * canvas.width,
       y: canvas.height + Math.random() * 50,
@@ -70,8 +70,7 @@ export function FireworksBackground() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-0"
-      style={{ opacity: 0.3 }}
+      style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, opacity: 0.3 }}
     />
   )
 }

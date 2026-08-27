@@ -10,6 +10,9 @@ import { HistoryScreen } from './screens/HistoryScreen'
 import { HistoryDetailScreen } from './screens/HistoryDetailScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { JoinGameScreen } from './screens/JoinGameScreen'
+import { RajaRaniLobbyScreen } from './screens/RajaRaniLobbyScreen'
+import { RajaRaniGameScreen } from './screens/RajaRaniGameScreen'
+import { RajaRaniPodiumScreen } from './screens/RajaRaniPodiumScreen'
 import { LoadingSkeleton } from './components/LoadingSkeleton'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { NavBar } from './components/NavBar'
@@ -35,7 +38,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen" style={{ background: '#7a8aba' }}>
+      <div className="min-h-screen" style={{ background: '#000000' }}>
         {!isLogin && <NavBar />}
         <AnimatePresence mode="wait" initial={false}>
           <Routes location={location} key={location.pathname}>
@@ -82,6 +85,21 @@ export default function App() {
             <Route path="/join" element={
               <PrivateRoute>
                 <JoinGameScreen />
+              </PrivateRoute>
+            } />
+            <Route path="/raja-rani/lobby" element={
+              <PrivateRoute>
+                <RajaRaniLobbyScreen />
+              </PrivateRoute>
+            } />
+            <Route path="/raja-rani/game/:roomId" element={
+              <PrivateRoute>
+                <RajaRaniGameScreen />
+              </PrivateRoute>
+            } />
+            <Route path="/raja-rani/podium/:roomId" element={
+              <PrivateRoute>
+                <RajaRaniPodiumScreen />
               </PrivateRoute>
             } />
             <Route path="/" element={<Navigate to="/name-input" replace />} />

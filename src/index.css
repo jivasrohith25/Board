@@ -9,67 +9,45 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: var(--bg-canvas);
+  background: #000000;
 }
 
 :root {
-  /* === DESIGN.md Color Tokens === */
-  --nintendo-red: #e60012;
-  --signal-orange: #f68d1f;
-  --amber: #ecab37;
-  --nav-gold: #e48600;
-  --canvas: #7a8aba;
-  --canvas-soft: #9fbee7;
-  --sky: #9fbee7;
-  --lavender: #acace7;
-  --ice: #c0d5e6;
-  --periwinkle: #8ba1d4;
-  --chrome-indigo: #3d4f97;
-  --muted-indigo: #60619c;
-  --platinum: #dedede;
-  --surface: #ffffff;
-  --carbon: #21242e;
-  --hairline: #5a5f8c;
-  --ink: #21242e;
-  --ink-soft: #3d4f97;
-  --on-primary: #ffffff;
-  --systems-teal: #206479;
-  --games-red: #a7282b;
-  --error: #e60012;
+  /* === Kippo Design Tokens === */
+  --color-kippo-pink: #ee1f66;
+  --color-void-black: #000000;
+  --color-carbon: #29292a;
+  --color-ash: #333333;
+  --color-ghost-white: #ffffff;
+  --gradient-sunset: linear-gradient(to right, #ffc400, #ff33e0);
+  --gradient-terminal-cyan: linear-gradient(to right, #33beff, #33ffb8);
+  --color-terminal-cyan: #33beff;
 
-  /* === Semantic aliases for Tailwind === */
-  --bg-canvas: #7a8aba;
-  --bg-canvas-soft: #9fbee7;
-  --bg-platinum: #dedede;
-  --bg-surface: #ffffff;
-  --bg-carbon: #21242e;
+  /* Font */
+  --font-kippo: 'Source Code Pro', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  --text-ink: #21242e;
-  --text-ink-soft: #3d4f97;
-  --text-on-primary: #ffffff;
-
-  --accent-signal: #f68d1f;
-  --accent-amber: #ecab37;
-  --accent-nav-gold: #e48600;
-  --accent-red: #e60012;
+  /* Surfaces */
+  --surface-void: #000000;
+  --surface-carbon: #29292a;
+  --surface-border: #ffffff;
 }
 
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-kippo);
   font-size: 12px;
-  line-height: 1.4;
-  background: var(--bg-canvas);
-  color: var(--text-ink);
+  line-height: 1.67;
+  background: #000000;
+  color: #ffffff;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-kippo);
 }
 
 ::selection {
-  background: rgba(236, 171, 55, 0.3);
-  color: var(--ink);
+  background: rgba(238, 31, 102, 0.3);
+  color: #ffffff;
 }
 
 input, textarea, select, button {
@@ -96,12 +74,12 @@ input[type="number"] {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--muted-indigo);
+  background: #333333;
   border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--chrome-indigo);
+  background: #555555;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -114,337 +92,182 @@ input[type="number"] {
 }
 
 @layer components {
-  /* === Bevel Mixin Helpers === */
-  .bevel-plate {
-    background: var(--platinum);
-    border-top: 1px solid rgba(255, 255, 255, 0.5);
-    border-left: 1px solid rgba(255, 255, 255, 0.3);
-    border-bottom: 2px solid var(--chrome-indigo);
-    border-right: 1px solid var(--chrome-indigo);
-    border-radius: 6px;
+  /* === Kippo Card === */
+  .kippo-card {
+    background: #29292a;
+    border: 1px solid #ffffff;
+    border-radius: 15px;
+    padding: 30px;
+    overflow: hidden;
   }
 
-  .bevel-raised {
-    background: var(--periwinkle);
-    border-top: 1px solid rgba(255, 255, 255, 0.6);
-    border-left: 1px solid rgba(255, 255, 255, 0.4);
-    border-bottom: 2px solid var(--chrome-indigo);
-    border-right: 1px solid var(--chrome-indigo);
-    border-radius: 6px;
+  .kippo-card-sm {
+    background: #29292a;
+    border: 1px solid #ffffff;
+    border-radius: 15px;
+    padding: 15px;
+    overflow: hidden;
   }
 
-  .bevel-inset {
-    background: var(--surface);
-    border-top: 1px solid var(--chrome-indigo);
-    border-left: 1px solid var(--muted-indigo);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
-    border-right: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 2px;
+  /* === Kippo Section Label === */
+  .kippo-label {
+    font-family: var(--font-kippo);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #ee1f66;
+    margin: 0 0 15px 0;
   }
 
-  .bevel-carbon {
-    background: var(--carbon);
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    border-bottom: 2px solid rgba(0, 0, 0, 0.4);
-    border-radius: 0;
-  }
-
-  /* === Section Label Bar === */
-  .section-label-bar {
-    background: var(--canvas);
-    border-top: 1px solid rgba(255, 255, 255, 0.45);
-    border-bottom: 2px solid var(--chrome-indigo);
+  /* === Kippo Section Label Bar === */
+  .kippo-label-bar {
+    background: #29292a;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
     padding: 8px 12px;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: var(--font-kippo);
     font-size: 11px;
     font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: 0.5px;
     text-transform: uppercase;
-    color: var(--ink);
-    border-radius: 0;
+    letter-spacing: 0.1em;
+    color: #ffffff;
   }
 
-  /* === Button System === */
-  .ds-btn-submit {
-    background: var(--signal-orange);
-    color: var(--on-primary);
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 11px;
+  /* === Primary CTA Button (Pink Fill) === */
+  .kippo-btn-primary {
+    font-family: var(--font-kippo);
+    font-size: 12px;
     font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: 0.5px;
     text-transform: uppercase;
-    border-radius: 2px;
-    padding: 16px 24px;
-    border-top: 1px solid rgba(255, 255, 255, 0.35);
-    border-bottom: 2px solid rgba(0, 0, 0, 0.25);
+    letter-spacing: 0.1em;
+    background: #ee1f66;
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 15px;
     cursor: pointer;
-    transition: all 0.1s;
+    transition: opacity 0.15s;
     outline: none;
   }
-  .ds-btn-submit:hover {
-    background: #e87a17;
+  .kippo-btn-primary:hover {
+    opacity: 0.9;
   }
-  .ds-btn-submit:active {
-    background: var(--nav-gold);
-    border-bottom-width: 1px;
-    margin-top: 1px;
+  .kippo-btn-primary:active {
+    opacity: 0.8;
   }
-  .ds-btn-submit:disabled {
+  .kippo-btn-primary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  .ds-btn-secondary {
-    background: var(--carbon);
-    color: var(--on-primary);
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    border-radius: 0;
-    padding: 12px 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    border-bottom: 2px solid rgba(0, 0, 0, 0.35);
-    cursor: pointer;
-    transition: all 0.1s;
-    outline: none;
-  }
-  .ds-btn-secondary:hover {
-    background: #2a2e3a;
-  }
-  .ds-btn-secondary:active {
-    border-bottom-width: 1px;
-    margin-top: 1px;
-  }
-  .ds-btn-secondary:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .ds-btn-primary {
-    background: var(--amber);
-    color: var(--carbon);
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    border-radius: 2px;
-    padding: 12px 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.35);
-    border-bottom: 2px solid rgba(0, 0, 0, 0.2);
-    cursor: pointer;
-    transition: all 0.1s;
-    outline: none;
-  }
-  .ds-btn-primary:hover {
-    background: #daa030;
-  }
-  .ds-btn-primary:active {
-    background: var(--nav-gold);
-    border-bottom-width: 1px;
-    margin-top: 1px;
-  }
-  .ds-btn-primary:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  /* === Text Input === */
-  .ds-input {
-    background: var(--surface);
-    color: var(--ink);
-    font-family: Arial, Helvetica, sans-serif;
+  /* === Ghost Outline Button === */
+  .kippo-btn-ghost {
+    font-family: var(--font-kippo);
     font-size: 12px;
-    border-radius: 2px;
-    padding: 4px 8px;
-    height: 20px;
-    border: 1px solid var(--hairline);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    background: transparent;
+    color: #ffffff;
+    border: 1px solid #ffffff;
+    border-radius: 10px;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: opacity 0.15s;
     outline: none;
   }
-  .ds-input:focus {
-    border-color: var(--chrome-indigo);
-    box-shadow: 0 0 0 2px rgba(61, 79, 151, 0.2);
+  .kippo-btn-ghost:hover {
+    opacity: 0.8;
   }
-  .ds-input::placeholder {
-    color: var(--muted-indigo);
+  .kippo-btn-ghost:active {
+    opacity: 0.7;
+  }
+  .kippo-btn-ghost:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* === Danger Button === */
+  .kippo-btn-danger {
+    font-family: var(--font-kippo);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    background: transparent;
+    color: #ee1f66;
+    border: 1px solid #ee1f66;
+    border-radius: 10px;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    outline: none;
+  }
+  .kippo-btn-danger:hover {
+    opacity: 0.8;
+  }
+
+  /* === Input === */
+  .kippo-input {
+    font-family: var(--font-kippo);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #ffffff;
+    background: #000000;
+    border: 1px solid #ffffff;
+    border-radius: 10px;
+    padding: 10px 15px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .kippo-input:focus {
+    border-color: #ee1f66;
+  }
+  .kippo-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
   }
 
   /* === Nav Bar === */
-  .ds-nav-bar {
-    background: var(--carbon);
-    color: var(--nav-gold);
-    padding: 8px;
-    height: 28px;
+  .kippo-nav {
+    background: #29292a;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 0 12px;
+    height: 48px;
     display: flex;
     align-items: center;
-    border-radius: 0;
-    border-bottom: 2px solid rgba(0, 0, 0, 0.4);
-    background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
-    background-size: 4px 4px;
   }
 
-  /* === Subnav Strip === */
-  .ds-subnav {
-    background: var(--canvas-soft);
-    color: var(--ink);
-    padding: 4px 8px;
-    font-size: 11px;
+  /* === Subnav === */
+  .kippo-subnav {
+    background: #29292a;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 4px 16px;
+    font-family: var(--font-kippo);
+    font-size: 10px;
     font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: 0.5px;
     text-transform: uppercase;
-    border-bottom: 2px solid var(--chrome-indigo);
-  }
-
-  /* === Form Panel === */
-  .ds-form-panel {
-    background: var(--platinum);
-    color: var(--ink);
-    border-radius: 6px;
-    padding: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.5);
-    border-left: 1px solid rgba(255, 255, 255, 0.3);
-    border-bottom: 2px solid var(--chrome-indigo);
-    border-right: 1px solid var(--chrome-indigo);
-  }
-
-  /* === Dotted Divider === */
-  .ds-dotted-divider {
-    border: none;
-    border-top: 1px dashed var(--muted-indigo);
-    height: 1px;
-    margin: 12px 0;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 16px;
   }
 
   /* === Stat Value === */
-  .ds-stat-value {
-    font-family: Arial, Helvetica, sans-serif;
+  .kippo-stat {
+    font-family: var(--font-kippo);
     font-size: 24px;
-    font-weight: 900;
-    color: var(--signal-orange);
+    font-weight: 700;
+    color: #ee1f66;
     line-height: 1;
     font-variant-numeric: tabular-nums;
-  }
-
-  /* === Info Box === */
-  .ds-info-box {
-    background: var(--surface);
-    border-radius: 4px;
-    padding: 12px;
-    border: 1px solid var(--hairline);
-  }
-
-  /* === Legacy compat classes (updated to DESIGN.md tokens) === */
-  .btn-primary {
-    @apply ds-btn-submit;
-  }
-  .btn-secondary {
-    @apply ds-btn-secondary;
-  }
-  .btn-danger {
-    background: var(--error);
-    color: var(--on-primary);
-    font-weight: 700;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-radius: 2px;
-    padding: 12px 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.3);
-    border-bottom: 2px solid rgba(0, 0, 0, 0.25);
-    cursor: pointer;
-    transition: all 0.1s;
-  }
-  .btn-danger:hover {
-    opacity: 0.9;
-  }
-
-  .btn-ghost {
-    background: transparent;
-    color: var(--ink-soft);
-    font-weight: 700;
-    font-size: 11px;
-    padding: 8px 12px;
-    border-radius: 2px;
-    cursor: pointer;
-  }
-  .btn-ghost:hover {
-    background: rgba(255, 255, 255, 0.15);
-  }
-
-  .input-field {
-    background: var(--surface);
-    color: var(--ink);
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 12px;
-    border-radius: 2px;
-    padding: 8px 12px;
-    border: 1px solid var(--hairline);
-    outline: none;
-    width: 100%;
-    transition: border-color 0.15s;
-  }
-  .input-field:focus {
-    border-color: var(--chrome-indigo);
-    box-shadow: 0 0 0 2px rgba(61, 79, 151, 0.2);
-  }
-  .input-field::placeholder {
-    color: var(--muted-indigo);
-  }
-
-  .input-error {
-    border-color: var(--error) !important;
-    box-shadow: 0 0 0 2px rgba(230, 0, 18, 0.15) !important;
-  }
-
-  .card {
-    background: var(--platinum);
-    border-radius: 6px;
-    border-top: 1px solid rgba(255, 255, 255, 0.5);
-    border-left: 1px solid rgba(255, 255, 255, 0.3);
-    border-bottom: 2px solid var(--chrome-indigo);
-    border-right: 1px solid var(--chrome-indigo);
-  }
-
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 12px;
-    background: var(--canvas-soft);
-    color: var(--ink);
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-radius: 2px;
-    border: 1px solid var(--hairline);
-  }
-
-  .section-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--ink);
-    line-height: 1.1;
-  }
-
-  .stat-value {
-    font-size: 24px;
-    font-weight: 900;
-    color: var(--signal-orange);
-    font-variant-numeric: tabular-nums;
-    line-height: 1;
   }
 }
 
+/* === Animations === */
 @keyframes confetti-burst {
   0% { transform: scale(0) rotate(0deg); opacity: 1; }
   100% { transform: scale(1) rotate(720deg); opacity: 0; }
@@ -454,15 +277,14 @@ input[type="number"] {
   animation: confetti-burst 1s ease-out forwards;
 }
 
-@keyframes firework-rise {
-  0% { transform: translateY(100vh) scale(0); opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { transform: translateY(-100vh) scale(1); opacity: 0; }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-.firework-particle {
-  animation: firework-rise 8s linear infinite;
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 /* Hide scrollbar utility */

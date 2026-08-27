@@ -15,22 +15,12 @@ const EMOTION_IMAGES = {
   sad: coachSad,
 }
 
-const PRELOADED_IMAGES = (() => {
-  const imgs = {}
-  Object.values(EMOTION_IMAGES).forEach(src => {
-    const img = new Image()
-    img.src = src
-    imgs[src] = img
-  })
-  return imgs
-})()
-
-const BUBBLE_STYLES = {
-  default: 'bg-bg-elevated border-ui-border text-text-primary',
-  happy: 'bg-status-success/10 border-status-success/30 text-text-primary',
-  laugh: 'bg-status-warning/10 border-status-warning/30 text-text-primary',
-  shocked: 'bg-status-error/10 border-status-error/30 text-text-primary',
-  sad: 'bg-accent-primary/10 border-accent-primary/30 text-text-primary',
+const BUBBLE_COLORS = {
+  default: { bg: '#29292a', border: '#ffffff' },
+  happy: { bg: 'rgba(40, 180, 99, 0.1)', border: 'rgba(40, 180, 99, 0.3)' },
+  laugh: { bg: 'rgba(238, 31, 102, 0.1)', border: 'rgba(238, 31, 102, 0.3)' },
+  shocked: { bg: 'rgba(238, 31, 102, 0.1)', border: 'rgba(238, 31, 102, 0.3)' },
+  sad: { bg: 'rgba(238, 31, 102, 0.1)', border: 'rgba(238, 31, 102, 0.3)' },
 }
 
 function GameCoachInner({ comment, emotion = 'default', fadeAfterMs = 5000, permanent = false, isTyping = false }) {
@@ -69,30 +59,36 @@ function GameCoachInner({ comment, emotion = 'default', fadeAfterMs = 5000, perm
     }
   }, [bubbleVisible, permanent])
 
-  const bubbleClass = BUBBLE_STYLES[currentEmotion] || BUBBLE_STYLES.default
+  const colors = BUBBLE_COLORS[currentEmotion] || BUBBLE_COLORS.default
 
   const Bubble = () => (
     <motion.div
-      className={`relative px-4 py-3 rounded-2xl mb-2 border shadow-card ${bubbleClass}`}
-      initial={{ opacity: 0, y: 8, scale: 0.92, filter: 'blur(3px)' }}
-      animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-      exit={{ opacity: 0, y: -4, scale: 0.96, filter: 'blur(2px)' }}
+      style={{
+        background: colors.bg,
+        border: `1px solid ${colors.border}`,
+        borderRadius: '15px',
+        padding: '10px 15px',
+        marginBottom: '8px',
+        fontFamily: "'Source Code Pro', monospace",
+      }}
+      initial={{ opacity: 0, y: 8, scale: 0.92 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -4, scale: 0.96 }}
       transition={{ type: 'spring', stiffness: 320, damping: 24 }}
     >
-      <p className="text-xs font-bold leading-relaxed text-center">
+      <p style={{ fontSize: '12px', fontWeight: 700, lineHeight: '1.88', textAlign: 'center', color: '#ffffff', margin: 0 }}>
         {currentComment}
       </p>
-      <div className={`absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 border-b border-r ${bubbleClass}`} />
     </motion.div>
   )
 
-  const Character = ({ size = 'w-[110px] h-[110px]' }) => (
+  const Character = ({ size = 110 }) => (
     <AnimatePresence mode="wait">
       <motion.img
         key={currentEmotion}
         src={EMOTION_IMAGES[currentEmotion] || EMOTION_IMAGES.default}
-        alt="Mr. Slow"
-        className={`${size} object-contain drop-shadow-sm`}
+        alt="Coach"
+        style={{ width: `${size}px`, height: `${size}px`, objectFit: 'contain' }}
         initial={{ scale: 0.88, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.92, opacity: 0 }}
@@ -103,7 +99,7 @@ function GameCoachInner({ comment, emotion = 'default', fadeAfterMs = 5000, perm
 
   if (permanent) {
     return (
-      <div className="flex flex-col items-center max-w-[220px]">
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: '220px' }}>
         <AnimatePresence>
           {bubbleVisible && currentComment && <Bubble />}
         </AnimatePresence>
@@ -116,7 +112,7 @@ function GameCoachInner({ comment, emotion = 'default', fadeAfterMs = 5000, perm
     <AnimatePresence>
       {bubbleVisible && currentComment && (
         <motion.div
-          className="flex flex-col items-center max-w-[220px]"
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: '220px' }}
           initial={{ opacity: 0, y: 16, scale: 0.85 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 8, scale: 0.92 }}

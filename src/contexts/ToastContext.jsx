@@ -13,7 +13,7 @@ export function ToastProvider({ children }) {
       type: options.type || 'info',
       duration: options.duration ?? 4000,
       action: options.action,
-      ...options,
+      label: options.label,
     }
     setToasts(prev => [...prev, toast])
     return id
@@ -23,8 +23,8 @@ export function ToastProvider({ children }) {
     setToasts(prev => prev.filter(t => t.id !== id))
   }, [])
 
-  const showError = useCallback((message, action) => {
-    return addToast(message, { type: 'error', action, duration: 0 })
+  const showError = useCallback((message, options) => {
+    return addToast(message, { type: 'error', duration: 0, ...options })
   }, [addToast])
 
   const showSuccess = useCallback((message) => {
@@ -38,7 +38,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast, showError, showSuccess, showInfo }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+      <div style={{ position: 'fixed', bottom: '16px', right: '16px', zIndex: 50, display: 'flex', flexDirection: 'column', gap: '8px', pointerEvents: 'none' }}>
         {toasts.map(toast => (
           <Toast key={toast.id} toast={toast} onClose={removeToast} />
         ))}
@@ -53,32 +53,48 @@ function Toast({ toast, onClose }) {
     success: '✓',
     error: '✕',
   }
-  const styles = {
-    info: 'bg-warm-800 text-white',
-    success: 'bg-green-600 text-white',
-    error: 'bg-danger-600 text-white',
+  const bgColors = {
+    info: '#29292a',
+    success: '#29292a',
+    error: '#29292a',
+  }
+  const borderColors = {
+    info: '#ffffff',
+    success: '#40b466',
+    error: '#ee1f66',
   }
 
   return (
-    <div className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl min-w-[260px] max-w-md animate-slide-up ${styles[toast.type]}`}
-      style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}
-    >
-      <span className="flex-shrink-0 text-sm font-bold">{icons[toast.type]}</span>
-      <span className="flex-1 text-sm font-medium leading-snug">{toast.message}</span>
+    <div style={{
+      pointerEvents: 'auto',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      padding: '10px 15px',
+      background: bgColors[toast.type],
+      border: `1px solid ${borderColors[toast.type]}`,
+      borderRadius: '10px',
+      minWidth: '260px',
+      maxWidth: '400px',
+      fontFamily: "'Source Code Pro', monospace",
+      boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+    }}>
+      <span style={{ fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>{icons[toast.type]}</span>
+      <span style={{ flex: 1, fontSize: '12px', lineHeight: '1.67', color: '#ffffff' }}>{toast.message}</span>
       {toast.label && toast.action && (
         <button
           onClick={() => { toast.action(); onClose(toast.id); }}
-          className="text-white font-semibold underline text-xs hover:no-underline whitespace-nowrap flex-shrink-0"
+          style={{ fontSize: '10px', fontWeight: 700, color: '#ee1f66', background: 'none', border: 'none', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap', fontFamily: "'Source Code Pro', monospace" }}
         >
           {toast.label}
         </button>
       )}
       <button
         onClick={() => onClose(toast.id)}
-        className="text-white/70 hover:text-white transition-colors p-0.5 flex-shrink-0"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: '2px', flexShrink: 0 }}
         aria-label="Dismiss"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <svg style={{ width: '14px', height: '14px' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>

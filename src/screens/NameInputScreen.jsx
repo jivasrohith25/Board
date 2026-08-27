@@ -67,7 +67,9 @@ export function NameInputScreen() {
     try {
       const gameId = uuidv4()
       await setDoc(doc(db, 'games', gameId), {
-        createdBy: user.uid, username, players, roundLength,
+        createdBy: user.uid, username, players,
+        playerUids: [user.uid],
+        roundLength,
         currentRound: 1, status: 'active', createdAt: serverTimestamp(),
       })
       localStorage.removeItem(STORAGE_KEY)
@@ -87,14 +89,23 @@ export function NameInputScreen() {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
       style={{
-        minHeight: 'calc(100vh - 48px)',
+        minHeight: 'calc(100vh - 76px)',
         background: '#000000',
+        backgroundImage: 'url(/bg/main_page.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
         padding: '0',
         display: 'flex',
         flexDirection: 'column',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <div className="name-input-grid" style={{ flex: 1, maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '16px', display: 'grid', gridTemplateColumns: '1fr 280px', gap: '15px', alignItems: 'start' }}>
+      {/* Dark overlay for readability */}
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', pointerEvents: 'none', zIndex: 0 }} />
+
+      <div className="name-input-grid" style={{ flex: 1, maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '16px', display: 'grid', gridTemplateColumns: '1fr 280px', gap: '15px', alignItems: 'start', position: 'relative', zIndex: 1 }}>
 
         {/* === LEFT COLUMN — Game Setup === */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>

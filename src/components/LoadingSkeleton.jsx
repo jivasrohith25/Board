@@ -1,38 +1,23 @@
+import { motion } from 'framer-motion'
+
 export function LoadingSkeleton() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-primary px-4">
-      <div className="card p-8 max-w-sm w-full space-y-5 animate-pulse">
-        <div className="flex justify-center">
-          <div className="w-16 h-16 bg-bg-secondary rounded-2xl border border-ui-border" />
-        </div>
-        <div className="space-y-3">
-          <div className="h-5 bg-bg-secondary rounded-lg w-3/4 mx-auto" />
-          <div className="h-3 bg-bg-secondary/70 rounded w-2/3 mx-auto" />
-        </div>
-        <div className="space-y-2.5 pt-2">
-          <div className="h-11 bg-bg-secondary rounded-xl w-full" />
-          <div className="h-11 bg-bg-secondary/80 rounded-xl w-full" />
-        </div>
-        <div className="h-12 bg-accent-primary/20 rounded-xl w-full mt-4" />
+    <div style={{ minHeight: 'calc(100vh - 76px)', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div style={{ maxWidth: '480px', width: '100%', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        {[1, 2, 3].map(i => (
+          <motion.div
+            key={i}
+            animate={{ opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.15 }}
+            style={{
+              background: '#29292a',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: '15px',
+              height: i === 1 ? '120px' : '80px',
+            }}
+          />
+        ))}
       </div>
-    </div>
-  )
-}
-
-export function CardSkeleton({ count = 3 }) {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="card p-4 animate-pulse">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-bg-secondary rounded-full border border-ui-border" />
-            <div className="flex-1 space-y-2">
-              <div className="h-3.5 bg-bg-secondary rounded w-1/3" />
-              <div className="h-2.5 bg-bg-secondary/70 rounded w-1/2" />
-            </div>
-          </div>
-        </div>
-      ))}
     </div>
   )
 }

@@ -52,51 +52,51 @@ export function ProfileScreen() {
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -18 }}
-      style={{ minHeight: 'calc(100vh - 48px)', background: '#7a8aba', padding: '16px' }}
+      style={{ minHeight: 'calc(100vh - 76px)', background: '#000000', padding: '16px' }}
     >
       <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-        {/* Section Label Bar */}
-        <div className="section-label-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        {/* Section Label */}
+        <div className="kippo-label-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
           <span style={{ fontSize: '14px' }}>👤</span>
           PROFILE
-          <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: '400', letterSpacing: '0', textTransform: 'none' }}>Choose your avatar</span>
+          <span style={{ marginLeft: 'auto', fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 400, letterSpacing: 0, textTransform: 'none', opacity: 0.5 }}>Choose your avatar</span>
         </div>
 
         {/* Current User */}
-        <div className="ds-form-panel" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px', padding: '16px' }}>
+        <div className="kippo-card" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
           <div style={{
             width: '48px', height: '48px',
             overflow: 'hidden',
-            background: '#3d4f97',
+            background: '#29292a',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
-            border: '2px solid #ecab37',
-            borderRadius: '0',
+            border: '1px solid #ee1f66',
+            borderRadius: '50px',
           }}>
             {selected ? (
               <img src={AVATARS.find(a => a.id === selected)?.file} alt={selected} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <span style={{ color: '#ecab37', fontSize: '18px', fontWeight: '900' }}>
+              <span style={{ fontFamily: "'Source Code Pro', monospace", color: '#ee1f66', fontSize: '18px', fontWeight: 700 }}>
                 {displayName?.[0]?.toUpperCase() || '?'}
               </span>
             )}
           </div>
           <div>
-            <p style={{ fontFamily: 'Arial Black, Arial', fontSize: '14px', fontWeight: '900', color: '#21242e', margin: '0 0 2px 0' }}>{displayName || username}</p>
-            <p style={{ fontSize: '10px', fontWeight: '700', color: '#60619c', margin: 0 }}>@{username}</p>
+            <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '14px', fontWeight: 700, color: '#ffffff', margin: '0 0 4px 0' }}>{displayName || username}</p>
+            <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', margin: 0 }}>@{username}</p>
           </div>
         </div>
 
         {/* Change Name */}
-        <div className="ds-form-panel" style={{ padding: '12px 16px', marginBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="kippo-card-sm" style={{ marginBottom: '15px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#60619c', display: 'block', marginBottom: '4px' }}>DISPLAY NAME</label>
+              <label style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: '5px' }}>DISPLAY NAME</label>
               <input
                 type="text"
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value.slice(0, 20))}
-                className="ds-input"
+                className="kippo-input"
                 style={{ width: '100%', fontSize: '12px' }}
                 placeholder="Your display name"
               />
@@ -105,8 +105,8 @@ export function ProfileScreen() {
               whileTap={{ scale: 0.95 }}
               onClick={handleSaveName}
               disabled={savingName || !nameInput.trim() || nameInput === displayName}
-              className="ds-btn-primary"
-              style={{ marginTop: '14px', padding: '8px 16px', fontSize: '10px' }}
+              className="kippo-btn-primary"
+              style={{ marginTop: '18px', padding: '8px 15px', fontSize: '10px' }}
             >
               {savingName ? '...' : 'SAVE'}
             </motion.button>
@@ -114,9 +114,9 @@ export function ProfileScreen() {
         </div>
 
         {/* Avatar Grid */}
-        <div className="ds-form-panel" style={{ padding: 0, overflow: 'hidden', marginBottom: '12px' }}>
-          <div className="section-label-bar">≡ PICK YOUR CHARACTER</div>
-          <div style={{ padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+        <div className="kippo-card" style={{ padding: 0, overflow: 'hidden', marginBottom: '15px' }}>
+          <div className="kippo-label-bar">≡ PICK YOUR CHARACTER</div>
+          <div style={{ padding: '15px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
             {AVATARS.map(avatarItem => {
               const isSelected = selected === avatarItem.id
               return (
@@ -127,8 +127,9 @@ export function ProfileScreen() {
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
                     padding: '8px',
-                    background: isSelected ? 'rgba(246, 141, 31, 0.1)' : '#ffffff',
-                    border: isSelected ? '2px solid #f68d1f' : '2px solid transparent',
+                    background: isSelected ? 'rgba(238, 31, 102, 0.1)' : '#000000',
+                    border: isSelected ? '1px solid #ee1f66' : '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: '15px',
                     cursor: 'pointer',
                     transition: 'all 0.1s',
                   }}
@@ -136,12 +137,12 @@ export function ProfileScreen() {
                   <div style={{
                     width: '40px', height: '40px',
                     overflow: 'hidden',
-                    borderRadius: '0',
-                    border: isSelected ? '2px solid #f68d1f' : '1px solid #5a5f8c',
+                    borderRadius: '50px',
+                    border: isSelected ? '1px solid #ee1f66' : '1px solid rgba(255,255,255,0.15)',
                   }}>
                     <img src={avatarItem.file} alt={avatarItem.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
-                  <span style={{ fontSize: '9px', fontWeight: '700', color: isSelected ? '#f68d1f' : '#60619c', textTransform: 'uppercase', letterSpacing: '0.3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center' }}>
+                  <span style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '9px', fontWeight: 700, color: isSelected ? '#ee1f66' : 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center' }}>
                     {avatarItem.name}
                   </span>
                 </motion.button>
@@ -155,18 +156,18 @@ export function ProfileScreen() {
           whileTap={{ scale: 0.97 }}
           onClick={handleSave}
           disabled={!selected || saving}
-          className="ds-btn-submit"
-          style={{ width: '100%', marginBottom: '12px' }}
+          className="kippo-btn-primary"
+          style={{ width: '100%', marginBottom: '15px' }}
         >
           {saving ? 'SAVING...' : '💾 SAVE AVATAR'}
         </motion.button>
 
         {/* Logout */}
         {!showLogoutConfirm ? (
-          <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <div style={{ textAlign: 'center', marginTop: '15px' }}>
             <button
               onClick={() => setShowLogoutConfirm(true)}
-              className="ds-btn-secondary"
+              className="kippo-btn-ghost"
               style={{ fontSize: '10px', padding: '10px 24px' }}
             >
               LOG OUT
@@ -176,17 +177,17 @@ export function ProfileScreen() {
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="ds-form-panel"
-            style={{ textAlign: 'center', padding: '16px', background: 'rgba(230, 0, 18, 0.05)', borderTop: '2px solid #e60012' }}
+            className="kippo-card"
+            style={{ textAlign: 'center', borderColor: '#ee1f66' }}
           >
-            <p style={{ fontSize: '11px', fontWeight: '700', color: '#21242e', marginBottom: '12px' }}>
+            <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '12px', fontWeight: 700, color: '#ffffff', marginBottom: '15px' }}>
               Are you sure you want to log out?
             </p>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-              <button onClick={() => setShowLogoutConfirm(false)} className="ds-btn-secondary" style={{ fontSize: '10px', padding: '8px 16px' }}>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button onClick={() => setShowLogoutConfirm(false)} className="kippo-btn-ghost" style={{ fontSize: '10px', padding: '8px 15px' }}>
                 CANCEL
               </button>
-              <button onClick={handleLogout} className="ds-btn-submit" style={{ fontSize: '10px', padding: '8px 16px', background: '#e60012', borderBottomColor: 'rgba(0,0,0,0.3)' }}>
+              <button onClick={handleLogout} className="kippo-btn-danger" style={{ fontSize: '10px', padding: '8px 15px' }}>
                 CONFIRM LOGOUT
               </button>
             </div>

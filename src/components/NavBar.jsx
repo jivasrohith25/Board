@@ -8,76 +8,76 @@ export function NavBar() {
   const { user, displayName, avatar } = useAuth()
 
   const navItems = [
-    { label: 'NEW GAME', path: '/name-input' },
-    { label: 'JOIN', path: '/join' },
+    { label: '👑 RAJA RANI', path: '/raja-rani/lobby' },
     { label: 'DICE', path: '/dice' },
     { label: 'HISTORY', path: '/history' },
   ]
 
   return (
     <>
-      {/* Primary Carbon Nav Bar */}
-      <div className="ds-nav-bar" style={{ height: 'auto', minHeight: '28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', width: '100%', maxWidth: '1440px', margin: '0 auto', padding: '0 12px', gap: '4px' }}>
-          {/* Logo pill */}
+      <div className="kippo-nav">
+        <div style={{ display: 'flex', alignItems: 'center', width: '100%', maxWidth: '1200px', margin: '0 auto', gap: '4px' }}>
+          {/* Logo */}
           <button
             onClick={() => navigate('/name-input')}
             style={{
-              background: '#ffffff',
-              color: '#e60012',
-              borderRadius: '9999px',
-              padding: '2px 10px',
-              fontFamily: 'Arial Black, Arial, sans-serif',
-              fontSize: '13px',
-              fontWeight: '900',
+              background: '#ee1f66',
+              color: '#ffffff',
+              borderRadius: '10px',
+              padding: '4px 12px',
+              fontFamily: "'Source Code Pro', monospace",
+              fontSize: '12px',
+              fontWeight: '700',
               lineHeight: '1',
               border: 'none',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
-              letterSpacing: '0',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
             }}
           >
             BGS
           </button>
 
-          {/* Spacer */}
           <div style={{ flex: 1 }} />
 
-          {/* Nav links */}
-          {navItems.map(item => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              style={{
-                background: location.pathname === item.path ? 'rgba(228, 134, 0, 0.2)' : 'transparent',
-                color: '#e48600',
-                border: 'none',
-                borderRadius: '2px',
-                padding: '4px 10px',
-                fontFamily: 'Arial, Helvetica, sans-serif',
-                fontSize: '11px',
-                fontWeight: '700',
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                borderBottom: location.pathname === item.path ? '2px solid #e48600' : '2px solid transparent',
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
+          {/* Nav Links */}
+          {navItems.map(item => {
+            const isActive = location.pathname === item.path
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                style={{
+                  background: 'transparent',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderBottom: isActive ? '1px solid #ee1f66' : '1px solid transparent',
+                  padding: '4px 10px',
+                  fontFamily: "'Source Code Pro', monospace",
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {item.label}
+              </button>
+            )
+          })}
 
-          {/* Profile avatar */}
+          {/* Profile Avatar */}
           <button
             onClick={() => navigate('/profile')}
             style={{
-              width: '22px',
-              height: '22px',
-              borderRadius: '9999px',
+              width: '28px',
+              height: '28px',
+              borderRadius: '50px',
               overflow: 'hidden',
-              border: '2px solid rgba(228, 134, 0, 0.5)',
-              background: '#3d4f97',
+              border: '1px solid #ffffff',
+              background: '#29292a',
               cursor: 'pointer',
               padding: 0,
               flexShrink: 0,
@@ -87,7 +87,7 @@ export function NavBar() {
             {avatar ? (
               <img src={getAvatarUrl(avatar)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <span style={{ color: '#ecab37', fontSize: '10px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+              <span style={{ color: '#ee1f66', fontSize: '10px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', fontFamily: "'Source Code Pro', monospace" }}>
                 {displayName?.[0]?.toUpperCase() || '?'}
               </span>
             )}
@@ -95,11 +95,10 @@ export function NavBar() {
         </div>
       </div>
 
-      {/* Subnav strip */}
-      <div className="ds-subnav" style={{ display: 'flex', alignItems: 'center', gap: '16px', maxWidth: '1440px', margin: '0 auto' }}>
-        <span style={{ opacity: 0.6 }}>Players: {displayName || '---'}</span>
+      <div className="kippo-subnav">
+        <span>{displayName || '---'}</span>
         <span style={{ opacity: 0.3 }}>|</span>
-        <span style={{ opacity: 0.6, fontSize: '10px' }}>BOARD GAME SCOREKEEPER v1.0</span>
+        <span>KIPPO</span>
       </div>
     </>
   )

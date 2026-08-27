@@ -1,33 +1,43 @@
 import { getAvatarUrl } from '../config/avatars'
 
-const sizeClasses = {
-  xs: 'w-6 h-6 text-[8px]',
-  sm: 'w-8 h-8 text-[10px]',
-  md: 'w-10 h-10 text-xs',
-  lg: 'w-14 h-14 text-base',
-  xl: 'w-20 h-20 text-lg',
+const SIZES = {
+  xs: 20,
+  sm: 28,
+  md: 40,
+  lg: 56,
+  xl: 80,
 }
 
-const ringClasses = {
-  xs: '',
-  sm: '',
-  md: '',
-  lg: 'ring-2 ring-primary-200 ring-offset-2 ring-offset-warm-50',
-  xl: 'ring-3 ring-primary-200 ring-offset-2 ring-offset-warm-50',
-}
-
-export function PlayerAvatar({ name, avatar, size = 'md', className = '' }) {
-  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-  const avatarUrl = getAvatarUrl(avatar)
+export function PlayerAvatar({ name, avatar, size = 'md' }) {
+  const px = SIZES[size] || SIZES.md
+  const initials = name
+    ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+    : '?'
 
   return (
-    <div
-      className={`${sizeClasses[size]} rounded-full overflow-hidden bg-primary-100 text-primary-700 font-bold flex items-center justify-center flex-shrink-0 ${ringClasses[size]} ${className}`}
-    >
-      {avatarUrl ? (
-        <img src={avatarUrl} alt={name} className="w-full h-full object-cover" loading="lazy" />
+    <div style={{
+      width: `${px}px`,
+      height: `${px}px`,
+      borderRadius: '50px',
+      overflow: 'hidden',
+      border: '1px solid #ffffff',
+      background: '#29292a',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    }}>
+      {avatar ? (
+        <img src={getAvatarUrl(avatar)} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
-        <span>{initials}</span>
+        <span style={{
+          fontFamily: "'Source Code Pro', monospace",
+          fontSize: `${Math.max(px * 0.3, 8)}px`,
+          fontWeight: 700,
+          color: '#ee1f66',
+        }}>
+          {initials}
+        </span>
       )}
     </div>
   )

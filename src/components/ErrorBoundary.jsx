@@ -10,33 +10,54 @@ export class ErrorBoundary extends Component {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error, errorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo)
-  }
-
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-warm-50 p-6">
-          <div className="card p-8 max-w-md w-full text-center">
-            <div className="text-5xl mb-4">😵</div>
-            <h2 className="text-xl font-bold text-warm-900 mb-2">Something went wrong</h2>
-            <p className="text-warm-600 mb-6 text-sm">
-              {this.state.error?.message || 'An unexpected error occurred'}
-            </p>
+        <div style={{
+          minHeight: '100vh',
+          background: '#000000',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px',
+          fontFamily: "'Source Code Pro', monospace",
+        }}>
+          <div style={{
+            background: '#29292a',
+            border: '1px solid #ffffff',
+            borderRadius: '15px',
+            padding: '30px',
+            maxWidth: '480px',
+            width: '100%',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '15px' }}>⚠️</div>
+            <h1 style={{
+              fontSize: '16px',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              color: '#ee1f66',
+              margin: '0 0 10px 0',
+            }}>SOMETHING BROKE</h1>
+            <p style={{
+              fontSize: '12px',
+              color: '#ffffff',
+              opacity: 0.6,
+              lineHeight: '1.88',
+              margin: '0 0 20px 0',
+            }}>{this.state.error?.message || 'An unexpected error occurred.'}</p>
             <button
-              onClick={() => {
-                this.setState({ hasError: false, error: null })
-                window.location.href = '/'
-              }}
-              className="btn-primary"
+              onClick={() => window.location.href = '/'}
+              className="kippo-btn-primary"
             >
-              Go Home
+              GO HOME
             </button>
           </div>
         </div>
       )
     }
+
     return this.props.children
   }
 }

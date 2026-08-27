@@ -15,9 +15,9 @@ function DiceFace({ value }) {
   const face = diceFaces[value - 1]
   return (
     <svg viewBox="0 0 100 100" style={{ width: '160px', height: '160px' }}>
-      <rect x="2" y="2" width="96" height="96" rx="8" fill="#ffffff" stroke="#3d4f97" strokeWidth="3" />
+      <rect x="2" y="2" width="96" height="96" rx="8" fill="#ffffff" stroke="#ee1f66" strokeWidth="3" />
       {face.dots.map((dot, i) => (
-        <circle key={i} cx={dot.x} cy={dot.y} r="9" fill="#21242e" />
+        <circle key={i} cx={dot.x} cy={dot.y} r="9" fill="#000000" />
       ))}
     </svg>
   )
@@ -69,51 +69,52 @@ export function DicePage() {
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -18 }}
-      style={{ minHeight: 'calc(100vh - 48px)', background: '#7a8aba', padding: '16px' }}
+      style={{ minHeight: 'calc(100vh - 76px)', background: '#000000', padding: '16px' }}
     >
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-        {/* Section Label Bar */}
-        <div className="section-label-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        {/* Section Label */}
+        <div className="kippo-label-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
           <span style={{ fontSize: '14px' }}>🎲</span>
           DICE ROLLER
         </div>
 
         {/* Dice Panel */}
-        <div className="ds-form-panel" style={{ padding: '24px', textAlign: 'center', marginBottom: '12px' }}>
+        <div className="kippo-card" style={{ textAlign: 'center', marginBottom: '15px' }}>
           <motion.div
             animate={rolling ? { rotate: [0, 10, -10, 10, -10, 0], scale: [1, 1.05, 0.95, 1.05, 0.95, 1] } : {}}
             transition={{ duration: 0.5, repeat: rolling ? Infinity : 0 }}
-            style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}
+            style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px' }}
           >
             {currentValue ? (
               <DiceFace value={currentValue} />
             ) : (
               <div style={{
                 width: '160px', height: '160px',
-                border: '2px dashed #5a5f8c',
+                border: '1px dashed rgba(255,255,255,0.3)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'rgba(255,255,255,0.3)',
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: '15px',
               }}>
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#60619c', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ROLL TO SEE A NUMBER</span>
+                <span style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>ROLL TO SEE A NUMBER</span>
               </div>
             )}
           </motion.div>
 
           {currentValue && !rolling && (
             <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}>
-              <span style={{ fontFamily: 'Arial Black, Arial', fontSize: '48px', fontWeight: '900', color: '#f68d1f', lineHeight: '1' }}>{currentValue}</span>
+              <span style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '48px', fontWeight: 700, color: '#ee1f66', lineHeight: '1' }}>{currentValue}</span>
             </motion.div>
           )}
         </div>
 
         {/* Roll Button */}
-        <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '15px' }}>
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={rollDice}
             disabled={rolling}
-            className="ds-btn-submit"
-            style={{ padding: '16px 48px', fontSize: '13px' }}
+            className="kippo-btn-primary"
+            style={{ padding: '15px 48px', fontSize: '12px' }}
           >
             {rolling ? 'ROLLING...' : '🎲 ROLL!'}
           </motion.button>
@@ -121,9 +122,9 @@ export function DicePage() {
 
         {/* Roll History */}
         {rollHistory.length > 0 && (
-          <div className="ds-form-panel" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="section-label-bar">≡ HISTORY ({rollHistory.length})</div>
-            <div style={{ padding: '12px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+          <div className="kippo-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="kippo-label-bar">≡ HISTORY ({rollHistory.length})</div>
+            <div style={{ padding: '15px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
               {rollHistory.map((val, i) => (
                 <motion.span
                   key={`${i}-${val}`}
@@ -132,10 +133,12 @@ export function DicePage() {
                   style={{
                     width: '32px', height: '32px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: i === 0 ? '#f68d1f' : '#dedede',
-                    color: i === 0 ? '#ffffff' : '#60619c',
-                    fontSize: '12px', fontWeight: '700',
-                    fontFamily: 'Arial, monospace',
+                    background: i === 0 ? '#ee1f66' : '#29292a',
+                    color: i === 0 ? '#ffffff' : 'rgba(255,255,255,0.5)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: '10px',
+                    fontSize: '12px', fontWeight: 700,
+                    fontFamily: "'Source Code Pro', monospace",
                   }}
                 >
                   {val}

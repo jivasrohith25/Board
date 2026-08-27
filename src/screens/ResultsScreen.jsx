@@ -267,14 +267,16 @@ export function ResultsScreen() {
   const podiumHeights = { 1: 192, 2: 136, 3: 96 }
   const podiumDelay = { 1: 0.35, 2: 0.18, 3: 0.04 }
   const podiumLabel = { 1: '1ST', 2: '2ND', 3: '3RD' }
-  const podiumGold = { 1: '#ecab37', 2: '#c0c0c0', 3: '#cd7f32' }
+  const podiumGold = { 1: '#ee1f66', 2: '#888888', 3: '#cd7f32' }
+
+  const FONT = "'Source Code Pro', monospace"
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}
+      style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', fontFamily: FONT }}
     >
       {/* Background image */}
       <div style={{
@@ -283,7 +285,7 @@ export function ResultsScreen() {
         backgroundSize: 'cover', backgroundPosition: 'center',
         filter: 'blur(4px) brightness(0.85)',
       }} />
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(122, 138, 186, 0.75)', zIndex: 1 }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1 }} />
 
       <FireworksBackground />
 
@@ -296,9 +298,9 @@ export function ResultsScreen() {
             style={{
               width: '44px', height: '44px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: '#21242e', color: musicMuted ? '#60619c' : '#ecab37',
-              border: '2px solid rgba(255,255,255,0.15)',
-              cursor: 'pointer', padding: 0,
+              background: '#29292a', color: musicMuted ? 'rgba(255,255,255,0.4)' : '#ee1f66',
+              border: '1px solid #ffffff', borderRadius: '15px',
+              cursor: 'pointer', padding: 0, fontFamily: FONT,
             }}
             title={musicMuted ? 'Unmute victory music' : 'Mute victory music'}
           >
@@ -324,14 +326,14 @@ export function ResultsScreen() {
 
         {/* Title */}
         <motion.div style={{ textAlign: 'center', marginBottom: '32px' }} initial={{ opacity: 0, y: -24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-          <div className="section-label-bar" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <div className="kippo-label-bar" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
             <span style={{ fontSize: '14px' }}>🏆</span>
             FINAL STANDINGS
           </div>
-          <h1 style={{ fontFamily: 'Arial Black, Arial', fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: '900', color: '#21242e', margin: '0 0 8px 0', textShadow: '0 2px 0 rgba(255,255,255,0.5)' }}>
+          <h1 style={{ fontFamily: FONT, fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: '900', color: '#ffffff', margin: '0 0 8px 0' }}>
             {sortedPlayers[0]?.name || 'Winner'} owns table.
           </h1>
-          <p style={{ fontSize: '13px', color: '#3d4f97', fontWeight: '600' }}>
+          <p style={{ fontFamily: FONT, fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: '600' }}>
             Scores locked, bragging rights archived, rematch pressure fully loaded.
           </p>
         </motion.div>
@@ -341,7 +343,7 @@ export function ResultsScreen() {
           <div>
             {/* Podium — Block Platforms (Part 6) */}
             <motion.div
-              className="ds-form-panel"
+              className="kippo-card"
               style={{ padding: '24px 16px', marginBottom: '16px', overflow: 'hidden' }}
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
@@ -365,13 +367,13 @@ export function ResultsScreen() {
                         <div style={{ transform: player.rank === 1 ? 'scale(1.1)' : 'none', marginBottom: '8px' }}>
                           <PlayerAvatar name={player.name} avatar={player.avatar} size={player.rank === 1 ? 'lg' : 'md'} />
                         </div>
-                        <p style={{ fontFamily: 'Arial Black, Arial', fontSize: '13px', fontWeight: '900', color: '#21242e', margin: '0 0 4px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <p style={{ fontFamily: FONT, fontSize: '13px', fontWeight: '900', color: '#ffffff', margin: '0 0 4px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {player.name}
                         </p>
                         {isTied && (
-                          <span style={{ fontSize: '8px', fontWeight: '700', color: '#ecab37', background: 'rgba(236, 171, 55, 0.2)', padding: '2px 6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>TIED</span>
+                          <span style={{ fontFamily: FONT, fontSize: '8px', fontWeight: '700', color: '#ee1f66', background: 'rgba(238,31,102,0.2)', padding: '2px 6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>TIED</span>
                         )}
-                        <p style={{ fontFamily: 'Arial, monospace', fontSize: '18px', fontWeight: '900', color: gold, margin: '4px 0 0 0', fontVariantNumeric: 'tabular-nums' }}>
+                        <p style={{ fontFamily: FONT, fontSize: '18px', fontWeight: '900', color: gold, margin: '4px 0 0 0', fontVariantNumeric: 'tabular-nums' }}>
                           {player.score}
                         </p>
                       </div>
@@ -380,23 +382,19 @@ export function ResultsScreen() {
                       <motion.div
                         style={{
                           width: '100%', height: `${height}px`,
-                          background: `linear-gradient(to top, ${gold}, ${gold}dd)`,
-                          borderTop: '3px solid rgba(255,255,255,0.45)',
-                          borderLeft: '1px solid rgba(255,255,255,0.25)',
-                          borderRight: '2px solid rgba(0,0,0,0.15)',
-                          borderBottom: `3px solid ${gold}88`,
+                          background: gold,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           position: 'relative', overflow: 'hidden',
+                          border: '1px solid #ffffff',
+                          borderRadius: '15px',
                         }}
                         initial={{ height: 0 }}
                         animate={{ height }}
                         transition={{ delay: podiumDelay[player.rank] + 0.16, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                       >
-                        {/* Chrome shine */}
-                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(110deg, rgba(255,255,255,0.28), transparent 42%)' }} />
                         <span style={{
-                          fontFamily: 'Arial Black, Arial', fontSize: player.rank === 1 ? '32px' : '24px', fontWeight: '900',
-                          color: player.rank === 1 ? '#21242e' : 'rgba(33,36,46,0.7)',
+                          fontFamily: FONT, fontSize: player.rank === 1 ? '32px' : '24px', fontWeight: '900',
+                          color: '#ffffff',
                           position: 'relative', zIndex: 1,
                         }}>
                           {podiumLabel[player.rank]}
@@ -409,22 +407,21 @@ export function ResultsScreen() {
             </motion.div>
 
             {/* Score Overview */}
-            <motion.div className="ds-form-panel" style={{ padding: '16px', marginBottom: '16px' }} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.62 }}>
-              <div className="section-label-bar" style={{ marginBottom: '12px' }}>SCORE OVERVIEW</div>
+            <motion.div className="kippo-card" style={{ padding: '16px', marginBottom: '16px' }} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.62 }}>
+              <div className="kippo-label-bar" style={{ marginBottom: '12px' }}>SCORE OVERVIEW</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {sortedPlayers.map((player, i) => {
                   const pct = maxScore > 0 ? (player.score / maxScore) * 100 : 0
-                  const colors = ['#f68d1f', '#ecab37', '#3d4f97', '#e60012']
                   return (
                     <motion.div key={player.name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 + i * 0.06 }}>
                       <PlayerAvatar name={player.name} avatar={player.avatar} size="sm" />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '12px', fontWeight: '700', color: '#21242e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.name}</span>
-                          <span style={{ fontFamily: 'Arial, monospace', fontSize: '12px', fontWeight: '900', color: '#f68d1f', fontVariantNumeric: 'tabular-nums', marginLeft: '8px' }}>{player.score}</span>
+                          <span style={{ fontFamily: FONT, fontSize: '12px', fontWeight: '700', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.name}</span>
+                          <span style={{ fontFamily: FONT, fontSize: '12px', fontWeight: '900', color: '#ee1f66', fontVariantNumeric: 'tabular-nums', marginLeft: '8px' }}>{player.score}</span>
                         </div>
-                        <div style={{ width: '100%', height: '14px', background: '#dedede', overflow: 'hidden' }}>
-                          <motion.div style={{ height: '100%', background: colors[i % colors.length] }} initial={{ width: 0 }} animate={{ width: `${Math.max(pct, 3)}%` }} transition={{ delay: 0.8 + i * 0.08, duration: 0.55, ease: 'easeOut' }} />
+                        <div style={{ width: '100%', height: '14px', background: '#1a1a1a', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                          <motion.div style={{ height: '100%', background: '#ee1f66' }} initial={{ width: 0 }} animate={{ width: `${Math.max(pct, 3)}%` }} transition={{ delay: 0.8 + i * 0.08, duration: 0.55, ease: 'easeOut' }} />
                         </div>
                       </div>
                     </motion.div>
@@ -435,20 +432,20 @@ export function ResultsScreen() {
 
             {/* Also Played */}
             {rest.length > 0 && (
-              <motion.div className="ds-form-panel" style={{ padding: '16px', marginBottom: '16px' }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.58 }}>
-                <div className="section-label-bar" style={{ marginBottom: '8px' }}>ALSO PLAYED</div>
+              <motion.div className="kippo-card" style={{ padding: '16px', marginBottom: '16px' }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.58 }}>
+                <div className="kippo-label-bar" style={{ marginBottom: '8px' }}>ALSO PLAYED</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {rest.map((player, i) => {
                     const isTied = i > 0 && player.score === rest[i - 1].score
                     return (
-                      <div key={player.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', background: i % 2 === 0 ? '#ffffff' : 'transparent' }}>
-                        <span style={{ width: '24px', fontFamily: 'Arial, monospace', fontSize: '9px', fontWeight: '700', color: '#60619c', textAlign: 'center' }}>#{i + 4}</span>
+                      <div key={player.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', background: i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'transparent' }}>
+                        <span style={{ fontFamily: FONT, width: '24px', fontSize: '9px', fontWeight: '700', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>#{i + 4}</span>
                         <PlayerAvatar name={player.name} avatar={player.avatar} size="sm" />
-                        <span style={{ flex: 1, fontSize: '12px', fontWeight: '700', color: '#3d4f97' }}>
+                        <span style={{ fontFamily: FONT, flex: 1, fontSize: '12px', fontWeight: '700', color: '#ffffff' }}>
                           {player.name}
-                          {isTied && <span style={{ fontSize: '8px', color: '#ecab37', marginLeft: '4px' }}>TIE</span>}
+                          {isTied && <span style={{ fontSize: '8px', color: '#ee1f66', marginLeft: '4px' }}>TIE</span>}
                         </span>
-                        <span style={{ fontFamily: 'Arial, monospace', fontSize: '12px', fontWeight: '700', color: '#21242e', fontVariantNumeric: 'tabular-nums' }}>{player.score}</span>
+                        <span style={{ fontFamily: FONT, fontSize: '12px', fontWeight: '700', color: '#ffffff', fontVariantNumeric: 'tabular-nums' }}>{player.score}</span>
                       </div>
                     )
                   })}
@@ -461,8 +458,8 @@ export function ResultsScreen() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Game Analytics */}
             {analytics && (
-              <motion.div className="ds-form-panel" style={{ padding: '16px' }} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.72 }}>
-                <div className="section-label-bar" style={{ marginBottom: '12px' }}>GAME ANALYTICS</div>
+              <motion.div className="kippo-card" style={{ padding: '16px' }} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.72 }}>
+                <div className="kippo-label-bar" style={{ marginBottom: '12px' }}>GAME ANALYTICS</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
                   {[
                     { value: analytics.numRounds, label: 'Rounds' },
@@ -470,50 +467,50 @@ export function ResultsScreen() {
                     { value: analytics.avgScore, label: 'Avg / Player' },
                     { value: analytics.margin, label: 'Win Margin' },
                   ].map(({ value, label }) => (
-                    <div key={label} style={{ padding: '12px', background: '#dedede' }}>
-                      <p className="stat-value" style={{ margin: 0 }}>{value}</p>
-                      <p style={{ fontSize: '9px', fontWeight: '700', color: '#60619c', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '2px 0 0 0' }}>{label}</p>
+                    <div key={label} style={{ padding: '12px', background: '#000000', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '15px' }}>
+                      <p style={{ fontFamily: FONT, fontSize: '22px', fontWeight: '900', color: '#ee1f66', margin: 0 }}>{value}</p>
+                      <p style={{ fontFamily: FONT, fontSize: '9px', fontWeight: '700', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '2px 0 0 0' }}>{label}</p>
                     </div>
                   ))}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px', color: '#3d4f97' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px', fontFamily: FONT, color: '#ffffff' }}>
                   {analytics.highestRoundScore > 0 && (
                     <p style={{ margin: 0 }}>
-                      <strong style={{ color: '#21242e' }}>{analytics.highestRoundPlayer}</strong> scored{' '}
-                      <span style={{ fontFamily: 'Arial, monospace', fontWeight: '900', color: '#f68d1f' }}>{analytics.highestRoundScore}</span> in round {analytics.highestRoundNum}.
+                      <strong style={{ color: '#ffffff' }}>{analytics.highestRoundPlayer}</strong> scored{' '}
+                      <span style={{ fontFamily: FONT, fontWeight: '900', color: '#ee1f66' }}>{analytics.highestRoundScore}</span> in round {analytics.highestRoundNum}.
                     </p>
                   )}
                   {analytics.biggestLead > 0 && (
                     <p style={{ margin: 0 }}>
-                      Biggest lead: <span style={{ fontFamily: 'Arial, monospace', fontWeight: '900', color: '#f68d1f' }}>{analytics.biggestLead} pts</span>{' '}
-                      <span style={{ color: '#60619c' }}>({analytics.leadLabel})</span>
+                      Biggest lead: <span style={{ fontFamily: FONT, fontWeight: '900', color: '#ee1f66' }}>{analytics.biggestLead} pts</span>{' '}
+                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>({analytics.leadLabel})</span>
                     </p>
                   )}
                   {analytics.maxComeback > 0 && analytics.comebackPlayer && (
                     <p style={{ margin: 0 }}>
-                      <strong style={{ color: '#21242e' }}>{analytics.comebackPlayer}</strong> overcame a{' '}
-                      <span style={{ fontFamily: 'Arial, monospace', fontWeight: '900', color: '#f68d1f' }}>{analytics.maxComeback} pt deficit</span> to win.
+                      <strong style={{ color: '#ffffff' }}>{analytics.comebackPlayer}</strong> overcame a{' '}
+                      <span style={{ fontFamily: FONT, fontWeight: '900', color: '#ee1f66' }}>{analytics.maxComeback} pt deficit</span> to win.
                     </p>
                   )}
                   {analytics.playerConsistency.length > 0 && (
                     <p style={{ margin: 0 }}>
-                      Most consistent: <strong style={{ color: '#21242e' }}>{analytics.playerConsistency[0].name}</strong>{' '}
-                      <span style={{ color: '#60619c' }}>(avg {analytics.playerConsistency[0].avg}, σ {analytics.playerConsistency[0].stdDev})</span>
+                      Most consistent: <strong style={{ color: '#ffffff' }}>{analytics.playerConsistency[0].name}</strong>{' '}
+                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>(avg {analytics.playerConsistency[0].avg}, σ {analytics.playerConsistency[0].stdDev})</span>
                     </p>
                   )}
                 </div>
 
                 {analytics.playerConsistency.length > 0 && (
-                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(90, 95, 140, 0.15)' }}>
-                    <div className="section-label-bar" style={{ marginBottom: '8px' }}>PLAYER AVERAGES</div>
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div className="kippo-label-bar" style={{ marginBottom: '8px' }}>PLAYER AVERAGES</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {analytics.playerConsistency.map((p, i) => (
                         <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
-                          <span style={{ width: '16px', fontFamily: 'Arial, monospace', fontSize: '9px', fontWeight: '700', color: '#60619c', textAlign: 'center' }}>#{i + 1}</span>
+                          <span style={{ fontFamily: FONT, width: '16px', fontSize: '9px', fontWeight: '700', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>#{i + 1}</span>
                           <PlayerAvatar name={p.name} avatar={p.avatar} size="xs" />
-                          <span style={{ flex: 1, fontSize: '11px', fontWeight: '600', color: '#3d4f97' }}>{p.name}</span>
-                          <span style={{ fontFamily: 'Arial, monospace', fontSize: '10px', color: '#21242e', fontVariantNumeric: 'tabular-nums' }}>avg {p.avg}</span>
+                          <span style={{ fontFamily: FONT, flex: 1, fontSize: '11px', fontWeight: '600', color: '#ffffff' }}>{p.name}</span>
+                          <span style={{ fontFamily: FONT, fontSize: '10px', color: '#ee1f66', fontVariantNumeric: 'tabular-nums' }}>avg {p.avg}</span>
                         </div>
                       ))}
                     </div>
@@ -523,9 +520,9 @@ export function ResultsScreen() {
             )}
 
             {/* Next Move */}
-            <motion.div className="ds-form-panel" style={{ padding: '16px' }} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.86 }}>
-              <div className="section-label-bar" style={{ marginBottom: '12px' }}>NEXT MOVE?</div>
-              <motion.button whileTap={{ scale: 0.98 }} onClick={() => setShowRematchConfirm(true)} disabled={rematching} className="ds-btn-submit" style={{ width: '100%', marginBottom: '8px', padding: '16px 24px' }}>
+            <motion.div className="kippo-card" style={{ padding: '16px' }} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.86 }}>
+              <div className="kippo-label-bar" style={{ marginBottom: '12px' }}>NEXT MOVE?</div>
+              <motion.button whileTap={{ scale: 0.98 }} onClick={() => setShowRematchConfirm(true)} disabled={rematching} className="kippo-btn-primary" style={{ width: '100%', marginBottom: '8px', padding: '16px 24px', fontFamily: FONT }}>
                 {rematching ? (
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                     <svg style={{ width: '14px', height: '14px', animation: 'spin 1s linear infinite' }} fill="none" viewBox="0 0 24 24">
@@ -538,17 +535,17 @@ export function ResultsScreen() {
               </motion.button>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <motion.button whileTap={{ scale: 0.98 }} onClick={() => setShowHomeConfirm(true)} className="ds-btn-secondary">
+                <motion.button whileTap={{ scale: 0.98 }} onClick={() => setShowHomeConfirm(true)} className="kippo-btn-ghost" style={{ fontFamily: FONT }}>
                   HOME
                 </motion.button>
                 {archivedGameId && !archiving && (
-                  <motion.button whileTap={{ scale: 0.98 }} onClick={() => setShowHistoryConfirm(true)} className="ds-btn-secondary">
+                  <motion.button whileTap={{ scale: 0.98 }} onClick={() => setShowHistoryConfirm(true)} className="kippo-btn-ghost" style={{ fontFamily: FONT }}>
                     HISTORY
                   </motion.button>
                 )}
                 {archiving && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', background: '#dedede' }}>
-                    <svg style={{ width: '14px', height: '14px', animation: 'spin 1s linear infinite', color: '#60619c' }} fill="none" viewBox="0 0 24 24">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', background: '#000000', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '15px' }}>
+                    <svg style={{ width: '14px', height: '14px', animation: 'spin 1s linear infinite', color: 'rgba(255,255,255,0.4)' }} fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                     </svg>
