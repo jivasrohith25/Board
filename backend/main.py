@@ -302,21 +302,26 @@ def _parse_voice_impl(raw_text: str, players: list[str]) -> dict:
     consumed_spans: list[tuple[int, int]] = []
 
     for name_lower, name_orig in player_pairs:
-        idx = lower_text.find(name_lower)
-        if idx == -1:
-            continue
+        # Use re.search to find ALL occurrences of this player name (word boundary)
+        pattern = re.compile(r'\b' + re.escape(name_lower) + r'\b', re.IGNORECASE)
+        for m in pattern.finditer(lower_text):
+            start, end = m.span()
 
-        end = idx + len(name_lower)
-        consumed_spans.append((idx, end))
+            # Skip if this span overlaps with an already-consumed span
+            overlaps = any(start < ce and end > cs for cs, ce in consumed_spans)
+            if overlaps:
+                continue
 
-        # Search for a number in the text AFTER the player name
-        segment_after = raw_text[end:]
-        score = _number_from_text(segment_after)
+            consumed_spans.append((start, end))
 
-        if score is not None:
-            matched.append({"player": name_orig, "score": score})
-        else:
-            errors.append(f"Found '{name_orig}' but no score after it")
+            # Search for a number in the text AFTER the player name
+            segment_after = raw_text[end:]
+            score = _number_from_text(segment_after)
+
+            if score is not None:
+                matched.append({"player": name_orig, "score": score})
+            else:
+                errors.append(f"Found '{name_orig}' but no score after it")
 
     # Find name-like words (capitalized or near scoring verbs) not matching any player
     for word_match in re.finditer(r"\b([A-Z][a-z]{1,19})\b", raw_text):
@@ -361,12 +366,27 @@ async def parse_voice(
         raise HTTPException(status_code=404, detail="Game not found")
 
     game_data = game_doc.to_dict()
-    if game_data.get("createdBy") != user["uid"]:
-        raise HTTPException(status_code=403, detail="Not your game")
+    # Allow any player in the game to use voice, not just the creator
+    if user["uid"] not in (game_data.get("playerUids") or []):
+        raise HTTPException(status_code=403, detail="Not a player in this game")
 
-    players = game_data.get("players", [])
-    if not players:
+    raw_players = game_data.get("players", [])
+    if not raw_players:
         raise HTTPException(status_code=400, detail="Game has no players")
+
+    # Normalize: handle mixed format (strings + {uid, display_name} objects)
+    players = []
+    for p in raw_players:
+        if isinstance(p, str):
+            players.append(p)
+        elif isinstance(p, dict):
+            players.append(p.get("display_name") or p.get("displayName") or "")
+        else:
+            players.append(str(p))
+    players = [p for p in players if p]
+
+    if not players:
+        raise HTTPException(status_code=400, detail="Game has no valid player names")
 
     return _parse_voice_impl(req.text.strip(), players)
 

@@ -196,7 +196,7 @@ export function RajaRaniLobbyScreen() {
     <motion.div key="menu" variants={pageVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.25 }}
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '100%', maxWidth: '700px', margin: '0 auto' }}>
 
-      <p style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', opacity: 0.4, margin: 0 }}>
+      <p style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', opacity: 0.6, margin: 0 }}>
         SELECT AN OPTION
       </p>
 
@@ -206,7 +206,7 @@ export function RajaRaniLobbyScreen() {
           onClick={() => setView('create')}>
           <span style={{ fontSize: '40px', lineHeight: 1 }}>👑</span>
           <p style={{ fontFamily: FONT, fontSize: '14px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>CREATE ROOM</p>
-          <p style={{ fontFamily: FONT, fontSize: '11px', color: '#ffffff', opacity: 0.5, margin: 0, lineHeight: 1.6 }}>Host a game and invite friends</p>
+          <p style={{ fontFamily: FONT, fontSize: '11px', color: '#ffffff', opacity: 0.7, margin: 0, lineHeight: 1.6 }}>Host a game and invite friends</p>
           <motion.button whileTap={{ scale: 0.95 }} style={{ ...btnPrimary, marginTop: '8px', width: '100%', padding: '12px 15px' }}>CREATE</motion.button>
         </motion.div>
 
@@ -215,7 +215,7 @@ export function RajaRaniLobbyScreen() {
           onClick={() => setView('join')}>
           <span style={{ fontSize: '40px', lineHeight: 1 }}>🎯</span>
           <p style={{ fontFamily: FONT, fontSize: '14px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>JOIN ROOM</p>
-          <p style={{ fontFamily: FONT, fontSize: '11px', color: '#ffffff', opacity: 0.5, margin: 0, lineHeight: 1.6 }}>Enter a code to join a game</p>
+          <p style={{ fontFamily: FONT, fontSize: '11px', color: '#ffffff', opacity: 0.7, margin: 0, lineHeight: 1.6 }}>Enter a code to join a game</p>
           <motion.button whileTap={{ scale: 0.95 }} style={{ ...btnGhost, marginTop: '8px', width: '100%', padding: '12px 15px' }}>JOIN</motion.button>
         </motion.div>
       </div>
@@ -233,14 +233,14 @@ export function RajaRaniLobbyScreen() {
         <div className="lobby-settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
           {/* Police Time Limit */}
           <div style={{ ...smallCardStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-            <p style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', opacity: 0.5, margin: 0 }}>
+            <p style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', opacity: 0.7, margin: 0 }}>
               POLICE TIME
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <motion.button whileTap={{ scale: 0.9 }} onClick={() => adjustTimeLimit(-5)} disabled={timeLimit <= 15} style={stepperBtn(false)}>−</motion.button>
               <div style={{ textAlign: 'center', minWidth: '50px' }}>
                 <span style={{ fontFamily: FONT, fontSize: '36px', fontWeight: 700, color: '#ee1f66', lineHeight: '1', fontVariantNumeric: 'tabular-nums' }}>{timeLimit}</span>
-                <div style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', marginTop: '5px', opacity: 0.5 }}>SECONDS</div>
+                <div style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', marginTop: '5px', opacity: 0.7 }}>SECONDS</div>
               </div>
               <motion.button whileTap={{ scale: 0.9 }} onClick={() => adjustTimeLimit(5)} disabled={timeLimit >= 120} style={stepperBtn(true)}>+</motion.button>
             </div>
@@ -248,14 +248,14 @@ export function RajaRaniLobbyScreen() {
 
           {/* Total Rounds */}
           <div style={{ ...smallCardStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-            <p style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', opacity: 0.5, margin: 0 }}>
+            <p style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', opacity: 0.7, margin: 0 }}>
               TOTAL ROUNDS
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <motion.button whileTap={{ scale: 0.9 }} onClick={() => adjustRounds(-1)} disabled={rounds <= 1} style={stepperBtn(false)}>−</motion.button>
               <div style={{ textAlign: 'center', minWidth: '50px' }}>
                 <span style={{ fontFamily: FONT, fontSize: '36px', fontWeight: 700, color: '#ee1f66', lineHeight: '1', fontVariantNumeric: 'tabular-nums' }}>{rounds}</span>
-                <div style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', marginTop: '5px', opacity: 0.5 }}>ROUNDS</div>
+                <div style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', marginTop: '5px', opacity: 0.7 }}>ROUNDS</div>
               </div>
               <motion.button whileTap={{ scale: 0.9 }} onClick={() => adjustRounds(1)} disabled={rounds >= 30} style={stepperBtn(true)}>+</motion.button>
             </div>
@@ -331,7 +331,7 @@ export function RajaRaniLobbyScreen() {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
       style={{
-        minHeight: 'calc(100vh - 76px)',
+        minHeight: '100vh',
         background: '#000000',
         padding: '20px 16px',
         display: 'flex',

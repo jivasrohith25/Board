@@ -92,11 +92,51 @@ function fisherYates(arr) {
   return a
 }
 
+/**
+ * Scoring:
+ *   Raja  = 1000
+ *   Rani  = 800
+ *   Police = -100 if catches thief, 0 if not
+ *   Thief = 0 if caught, random 200-799 if escaped
+ *   Civilian = random 100-799 unique per civilian (at least 1pt apart)
+ */
+function computeRoundScores(roles, policeSelectionCorrect) {
+  const scores = {}
+  const civilians = []
+
+  Object.entries(roles).forEach(([uid, role]) => {
+    if (role === 'raja') scores[uid] = 1000
+    else if (role === 'rani') scores[uid] = 800
+    else if (role === 'police') scores[uid] = policeSelectionCorrect ? -100 : 0
+    else if (role === 'thief') scores[uid] = 0 // caught case; set below if escaped
+    else civilians.push(uid)
+  })
+
+  // Thief escaped — random 200-799
+  const thiefUid = Object.entries(roles).find(([, r]) => r === 'thief')?.[0]
+  if (thiefUid && !policeSelectionCorrect) {
+    scores[thiefUid] = 200 + Math.floor(Math.random() * 600)
+  }
+
+  // Civilians — unique random 100-799, at least 1pt apart
+  if (civilians.length > 0) {
+    const pool = new Set()
+    while (pool.size < civilians.length) {
+      pool.add(100 + Math.floor(Math.random() * 700))
+    }
+    const sorted = [...pool].sort((a, b) => a - b)
+    civilians.forEach((uid, i) => { scores[uid] = sorted[i] })
+  }
+
+  return scores
+}
+
 /* ─── Card Reveal ─── */
 function GameCard({ role, revealed, onTap }) {
   const meta = ROLE_META[role] || ROLE_META.civilian
   return (
     <div
+      className="rr-game-card"
       style={{ perspective: '800px', width: '200px', height: '280px', cursor: revealed ? 'default' : 'pointer' }}
       onClick={!revealed ? onTap : undefined}
     >
@@ -124,7 +164,7 @@ function GameCard({ role, revealed, onTap }) {
             justifyContent: 'center',
           }}
         >
-          <span style={{ fontFamily: FONT, fontSize: '72px', fontWeight: 900, color: ACCENT }}>?</span>
+          <span className="card-q" style={{ fontFamily: FONT, fontSize: '72px', fontWeight: 900, color: ACCENT }}>?</span>
         </div>
         {/* Face up */}
         <div
@@ -143,8 +183,8 @@ function GameCard({ role, revealed, onTap }) {
             gap: '16px',
           }}
         >
-          <span style={{ fontSize: '56px' }}>{meta.icon}</span>
-          <span style={{ fontFamily: FONT, fontSize: '18px', fontWeight: 900, color: meta.color, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <span className="card-icon" style={{ fontSize: '56px' }}>{meta.icon}</span>
+          <span className="card-label" style={{ fontFamily: FONT, fontSize: '18px', fontWeight: 900, color: meta.color, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             {meta.label}
           </span>
         </div>
@@ -405,21 +445,7 @@ export function RajaRaniGameScreen() {
 
     const roles = currentRoundData.roles
     const correct = roles[selectedTarget] === 'thief'
-    const roundScores = {}
-
-    if (correct) {
-      roundScores[myUid] = 1
-      roundScores[selectedTarget] = 0
-    } else {
-      roundScores[myUid] = 0
-      roundScores[selectedTarget] = 1
-    }
-
-    players.forEach((p) => {
-      if (p.uid !== myUid && p.uid !== selectedTarget) {
-        roundScores[p.uid] = 1
-      }
-    })
+    const roundScores = computeRoundScores(roles, correct)
 
     try {
       const batch = writeBatch(db)
@@ -433,11 +459,9 @@ export function RajaRaniGameScreen() {
 
       players.forEach((p) => {
         const pts = roundScores[p.uid] || 0
-        if (pts > 0) {
-          batch.update(doc(db, 'rajaRaniRooms', roomId), {
-            [`scores.${p.uid}`]: increment(pts),
-          })
-        }
+        batch.update(doc(db, 'rajaRaniRooms', roomId), {
+          [`scores.${p.uid}`]: increment(pts),
+        })
       })
 
       await batch.commit()
@@ -455,14 +479,7 @@ export function RajaRaniGameScreen() {
     setSubmitting(true)
 
     const roles = currentRoundData.roles
-    const roundScores = {}
-    // Police fails, thief gets point, civilians get point
-    roundScores[myUid] = 0
-    players.forEach((p) => {
-      if (p.uid !== myUid) {
-        roundScores[p.uid] = 1
-      }
-    })
+    const roundScores = computeRoundScores(roles, false)
 
     try {
       const batch = writeBatch(db)
@@ -476,11 +493,9 @@ export function RajaRaniGameScreen() {
 
       players.forEach((p) => {
         const pts = roundScores[p.uid] || 0
-        if (pts > 0) {
-          batch.update(doc(db, 'rajaRaniRooms', roomId), {
-            [`scores.${p.uid}`]: increment(pts),
-          })
-        }
+        batch.update(doc(db, 'rajaRaniRooms', roomId), {
+          [`scores.${p.uid}`]: increment(pts),
+        })
       })
 
       await batch.commit()
@@ -593,7 +608,7 @@ export function RajaRaniGameScreen() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        style={{ minHeight: 'calc(100vh - 76px)', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}
+        style={{ minHeight: '100vh', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}
       >
         <div style={{ textAlign: 'center' }}>
           <motion.div
@@ -616,7 +631,7 @@ export function RajaRaniGameScreen() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        style={{ minHeight: 'calc(100vh - 76px)', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}
+        style={{ minHeight: '100vh', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}
       >
         <div style={{ maxWidth: '400px', width: '100%', padding: '0 16px' }}>
           <div style={{ ...CARD_STYLE, padding: '30px', textAlign: 'center' }}>
@@ -640,7 +655,7 @@ export function RajaRaniGameScreen() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        style={{ minHeight: 'calc(100vh - 76px)', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}
+        style={{ minHeight: '100vh', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}
       >
         <div style={{ maxWidth: '400px', width: '100%', padding: '0 16px' }}>
           <div style={{ ...CARD_STYLE, padding: '30px' }}>
@@ -691,7 +706,7 @@ export function RajaRaniGameScreen() {
 
   /* ─── Phase: Reveal ─── */
   const renderReveal = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 76px)', padding: '32px 16px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '32px 16px' }}>
       <div style={{ marginBottom: '32px', textAlign: 'center' }}>
         <div style={{ ...LABEL_STYLE, padding: 0 }}>ROUND {currentRoundNum}</div>
         <p style={{ fontFamily: FONT, fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: '8px 0 0' }}>
@@ -718,7 +733,7 @@ export function RajaRaniGameScreen() {
 
   /* ─── Phase: Waiting ─── */
   const renderWaiting = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 76px)', padding: '32px 16px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '32px 16px' }}>
       <div style={{ ...LABEL_STYLE, padding: 0, marginBottom: '16px' }}>YOUR ROLE</div>
       <div style={{ marginBottom: '24px' }}>
         <span style={{ fontSize: '40px' }}>{ROLE_META[myRole || 'civilian'].icon}</span>
@@ -733,12 +748,16 @@ export function RajaRaniGameScreen() {
       >
         Waiting for police to act...
       </motion.p>
+      {/* Timer visible to ALL players */}
+      <div style={{ width: '100%', maxWidth: '400px', marginTop: '32px' }}>
+        <TimerBar remaining={timeRemaining} total={policeTimeLimit} />
+      </div>
     </div>
   )
 
   /* ─── Phase: Selecting (police) ─── */
   const renderSelecting = () => (
-    <div style={{ minHeight: 'calc(100vh - 76px)', padding: '32px 16px', maxWidth: '480px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '32px 16px', maxWidth: '480px', margin: '0 auto' }}>
       <div style={{ ...LABEL_STYLE, padding: 0, marginBottom: '24px', textAlign: 'center', fontSize: '14px' }}>
         IDENTIFY THE THIEF
       </div>
@@ -819,7 +838,7 @@ export function RajaRaniGameScreen() {
     if (!rr) return null
 
     return (
-      <div style={{ minHeight: 'calc(100vh - 76px)', padding: '32px 16px', maxWidth: '480px', margin: '0 auto' }}>
+      <div style={{ minHeight: '100vh', padding: '32px 16px', maxWidth: '480px', margin: '0 auto' }}>
         <div style={{ ...LABEL_STYLE, padding: 0, marginBottom: '20px', textAlign: 'center', fontSize: '14px' }}>
           ROUND {currentRoundNum} RESULT
         </div>
@@ -900,14 +919,17 @@ export function RajaRaniGameScreen() {
         <div style={{ ...CARD_STYLE, padding: '20px', marginBottom: '20px' }}>
           <div style={{ ...LABEL_STYLE, padding: '0 0 16px', fontSize: '10px' }}>ROUND SCORES</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {roleEntries.map((entry) => (
-              <div key={entry.uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <span style={{ fontFamily: FONT, fontSize: '12px', fontWeight: 600, color: '#ffffff' }}>{entry.name}</span>
-                <span style={{ fontFamily: FONT, fontSize: '14px', fontWeight: 900, color: ACCENT, fontVariantNumeric: 'tabular-nums' }}>
-                  +{rr.roundScores?.[entry.uid] || 0}
-                </span>
-              </div>
-            ))}
+            {roleEntries.map((entry) => {
+              const pts = rr.roundScores?.[entry.uid] ?? 0
+              return (
+                <div key={entry.uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span style={{ fontFamily: FONT, fontSize: '12px', fontWeight: 600, color: '#ffffff' }}>{entry.name}</span>
+                  <span style={{ fontFamily: FONT, fontSize: '14px', fontWeight: 900, color: pts < 0 ? '#ff4444' : ACCENT, fontVariantNumeric: 'tabular-nums' }}>
+                    {pts > 0 ? '+' : ''}{pts}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -967,7 +989,7 @@ export function RajaRaniGameScreen() {
 
   /* ─── Phase: Intermission ─── */
   const renderIntermission = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 76px)', padding: '32px 16px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '32px 16px' }}>
       <div style={{ ...CARD_STYLE, padding: '30px', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
         <p style={{ fontFamily: FONT, fontSize: '14px', fontWeight: 900, color: '#ffffff', margin: '0 0 8px' }}>
           INTERMISSION
@@ -1005,7 +1027,7 @@ export function RajaRaniGameScreen() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      style={{ minHeight: 'calc(100vh - 76px)', background: '#000000', fontFamily: FONT }}
+      style={{ minHeight: '100vh', background: '#000000', fontFamily: FONT }}
     >
       <AnimatePresence mode="wait">
         {phase === 'reveal' && (
@@ -1035,7 +1057,18 @@ export function RajaRaniGameScreen() {
         )}
       </AnimatePresence>
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @media (max-width: 480px) {
+          .rr-game-card { width: 160px !important; height: 224px !important; }
+          .rr-game-card .card-q { font-size: 56px !important; }
+          .rr-game-card .card-icon { font-size: 44px !important; }
+          .rr-game-card .card-label { font-size: 14px !important; }
+          .rr-result-banner { font-size: 18px !important; }
+          .rr-label { font-size: 12px !important; padding: 0 !important; }
+          .rr-player-row { padding: 12px 14px !important; }
+        }
+      `}</style>
     </motion.div>
   )
 }

@@ -62,7 +62,7 @@ export function JoinGameScreen() {
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -18 }}
-      style={{ minHeight: 'calc(100vh - 76px)', background: '#000000', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      style={{ minHeight: '100vh', background: '#000000', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
       <div style={{ maxWidth: '480px', width: '100%' }}>
         <div className="kippo-card" style={{ padding: 0, overflow: 'hidden' }}>

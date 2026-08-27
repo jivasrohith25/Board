@@ -35,11 +35,14 @@ function PublicRoute({ children }) {
 export default function App() {
   const location = useLocation()
   const isLogin = location.pathname === '/login'
+  const path = location.pathname
+  // Only show NavBar on hub pages, hide during gameplay
+  const isGameplay = path.startsWith('/point-entry') || path.startsWith('/results') || path.startsWith('/join') || path.startsWith('/raja-rani')
 
   return (
     <ErrorBoundary>
       <div className="min-h-screen" style={{ background: '#000000' }}>
-        {!isLogin && <NavBar />}
+        {!isLogin && !isGameplay && <NavBar />}
         <AnimatePresence mode="wait" initial={false}>
           <Routes location={location} key={location.pathname}>
             <Route path="/login" element={

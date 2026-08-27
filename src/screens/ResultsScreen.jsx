@@ -285,7 +285,7 @@ export function ResultsScreen() {
         backgroundSize: 'cover', backgroundPosition: 'center',
         filter: 'blur(4px) brightness(0.85)',
       }} />
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1 }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1 }} />
 
       <FireworksBackground />
 

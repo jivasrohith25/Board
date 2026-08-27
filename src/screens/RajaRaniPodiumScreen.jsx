@@ -44,9 +44,16 @@ export function RajaRaniPodiumScreen() {
     return () => { unsub(); unsubRounds() }
   }, [roomId, navigate])
 
-  // Confetti on mount
+  // Confetti + victory music on mount
   useEffect(() => {
     if (!room) return
+
+    // Victory music
+    const audio = new Audio('/victory_music.mpeg')
+    audio.loop = false
+    audio.volume = 0.6
+    audio.play().catch(() => {})
+
     const duration = 3000
     const end = Date.now() + duration
     const frame = () => {
@@ -55,11 +62,13 @@ export function RajaRaniPodiumScreen() {
       if (Date.now() < end) requestAnimationFrame(frame)
     }
     frame()
+
+    return () => { audio.pause(); audio.currentTime = 0 }
   }, [room])
 
   if (loading || !room) {
     return (
-      <div style={{ minHeight: 'calc(100vh - 76px)', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ fontFamily: FONT, fontSize: '14px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
           Loading results...
         </div>
@@ -114,7 +123,7 @@ export function RajaRaniPodiumScreen() {
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -18 }}
-      style={{ minHeight: 'calc(100vh - 76px)', background: '#000000', padding: '16px' }}
+      style={{ minHeight: '100vh', background: '#000000', padding: '16px' }}
     >
       <div style={{ maxWidth: '830px', margin: '0 auto' }}>
 
@@ -149,7 +158,7 @@ export function RajaRaniPodiumScreen() {
             }}>
               👑 WINNER
             </p>
-            <p style={{
+            <p className="rr-winner-name" style={{
               fontFamily: FONT,
               fontSize: '28px', fontWeight: 700,
               lineHeight: '1.19', margin: '0 0 15px 0',
@@ -160,7 +169,7 @@ export function RajaRaniPodiumScreen() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
               <p style={{ fontFamily: FONT, fontSize: '12px', opacity: 0.7, margin: 0 }}>Raja Rani Champion</p>
               <div style={{ textAlign: 'right' }}>
-                <p style={{
+                <p className="rr-winner-score" style={{
                   fontFamily: FONT,
                   fontSize: '32px', fontWeight: 700,
                   lineHeight: '1', margin: 0,
@@ -203,7 +212,7 @@ export function RajaRaniPodiumScreen() {
             }}>
               PODIUM
             </p>
-            <div style={{
+            <div className="rr-podium-container" style={{
               display: 'flex',
               alignItems: 'flex-end',
               justifyContent: 'center',
@@ -217,6 +226,7 @@ export function RajaRaniPodiumScreen() {
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: bar.height, opacity: 1 }}
                   transition={{ delay: 0.5 + i * 0.2, duration: 0.6, ease: 'easeOut' }}
+                  className={bar.rank === 1 ? 'rr-podium-bar-first' : 'rr-podium-bar'}
                   style={{
                     width: bar.rank === 1 ? '140px' : '110px',
                     background: bar.bg,
@@ -299,6 +309,7 @@ export function RajaRaniPodiumScreen() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
+          className="rr-standings-card"
           style={{
             background: '#29292a',
             border: '1px solid #ffffff',
@@ -534,6 +545,17 @@ export function RajaRaniPodiumScreen() {
           </motion.button>
         </motion.div>
       </div>
+
+      <style>{`
+        @media (max-width: 480px) {
+          .rr-podium-bar { width: 90px !important; }
+          .rr-podium-bar-first { width: 110px !important; }
+          .rr-podium-container { gap: 8px !important; padding: 0 4px !important; }
+          .rr-winner-name { font-size: 22px !important; }
+          .rr-winner-score { font-size: 26px !important; }
+          .rr-standings-card { padding: 20px !important; }
+        }
+      `}</style>
     </motion.div>
   )
 }

@@ -17,28 +17,6 @@ export function NavBar() {
     <>
       <div className="kippo-nav">
         <div style={{ display: 'flex', alignItems: 'center', width: '100%', maxWidth: '1200px', margin: '0 auto', gap: '4px' }}>
-          {/* Logo */}
-          <button
-            onClick={() => navigate('/name-input')}
-            style={{
-              background: '#ee1f66',
-              color: '#ffffff',
-              borderRadius: '10px',
-              padding: '4px 12px',
-              fontFamily: "'Source Code Pro', monospace",
-              fontSize: '12px',
-              fontWeight: '700',
-              lineHeight: '1',
-              border: 'none',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-            }}
-          >
-            BGS
-          </button>
-
           <div style={{ flex: 1 }} />
 
           {/* Nav Links */}
@@ -97,7 +75,7 @@ export function NavBar() {
 
       <div className="kippo-subnav">
         <span>{displayName || '---'}</span>
-        <span style={{ opacity: 0.3 }}>|</span>
+        <span style={{ opacity: 0.5 }}>|</span>
         <span>KIPPO</span>
       </div>
     </>

@@ -103,7 +103,7 @@ export function NameInputScreen() {
       }}
     >
       {/* Dark overlay for readability */}
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', pointerEvents: 'none', zIndex: 0 }} />
 
       <div className="name-input-grid" style={{ flex: 1, maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '16px', display: 'grid', gridTemplateColumns: '1fr 280px', gap: '15px', alignItems: 'start', position: 'relative', zIndex: 1 }}>
 
@@ -173,7 +173,7 @@ export function NameInputScreen() {
               </div>
               {players.length === 0 ? (
                 <div style={{ height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #ffffff', borderRadius: '15px' }}>
-                  <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.4 }}>NO PLAYERS</p>
+                  <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6 }}>NO PLAYERS</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
@@ -228,7 +228,7 @@ export function NameInputScreen() {
           <AnimatePresence>
             {!canStart && players.length > 0 && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} style={{ textAlign: 'center' }}>
-                <span style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.4 }}>ADD AT LEAST 2 PLAYERS</span>
+                <span style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6 }}>ADD AT LEAST 2 PLAYERS</span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -241,16 +241,16 @@ export function NameInputScreen() {
               TIPS
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '12px', color: '#ffffff', margin: 0, lineHeight: '1.88', opacity: 0.7 }}>
+              <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '12px', color: '#ffffff', margin: 0, lineHeight: '1.88', opacity: 0.85 }}>
                 Add players by typing names and hitting + ADD or Enter.
               </p>
-              <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '12px', color: '#ffffff', margin: 0, lineHeight: '1.88', opacity: 0.7 }}>
+              <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '12px', color: '#ffffff', margin: 0, lineHeight: '1.88', opacity: 0.85 }}>
                 Set rounds to control game length. Default is 20.
               </p>
-              <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '12px', color: '#ffffff', margin: 0, lineHeight: '1.88', opacity: 0.7 }}>
+              <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '12px', color: '#ffffff', margin: 0, lineHeight: '1.88', opacity: 0.85 }}>
                 Voice input is available on the score entry screen.
               </p>
-              <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '12px', color: '#ffffff', margin: 0, lineHeight: '1.88', opacity: 0.7 }}>
+              <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '12px', color: '#ffffff', margin: 0, lineHeight: '1.88', opacity: 0.85 }}>
                 Your draft is auto-saved — come back anytime.
               </p>
             </div>
@@ -261,11 +261,11 @@ export function NameInputScreen() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div style={{ textAlign: 'center', padding: '10px', background: '#000000', border: '1px solid #ffffff', borderRadius: '10px' }}>
                 <p style={{ fontFamily: "'Source Code Pro', monospace", margin: 0, fontSize: '20px', fontWeight: 700, color: '#ffffff' }}>{players.length}</p>
-                <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', margin: '5px 0 0 0', opacity: 0.4 }}>PLAYERS</p>
+                <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', margin: '5px 0 0 0', opacity: 0.6 }}>PLAYERS</p>
               </div>
               <div style={{ textAlign: 'center', padding: '10px', background: '#000000', border: '1px solid #ffffff', borderRadius: '10px' }}>
                 <p style={{ fontFamily: "'Source Code Pro', monospace", margin: 0, fontSize: '20px', fontWeight: 700, color: '#ee1f66' }}>{roundLength}</p>
-                <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', margin: '5px 0 0 0', opacity: 0.4 }}>ROUNDS</p>
+                <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', margin: '5px 0 0 0', opacity: 0.6 }}>ROUNDS</p>
               </div>
             </div>
           </div>
@@ -274,10 +274,10 @@ export function NameInputScreen() {
 
       {/* Footer Status Bar */}
       <div style={{ fontFamily: "'Source Code Pro', monospace", display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 16px', maxWidth: '1200px', width: '100%', margin: '0 auto', borderTop: '1px solid #ffffff' }}>
-        <span style={{ fontSize: '10px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.4 }}>
+        <span style={{ fontSize: '10px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6 }}>
           {players.length >= 2 ? `${players.length} PLAYERS READY` : 'ADD PLAYERS TO BEGIN'}
         </span>
-        <span style={{ fontSize: '10px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.4 }}>
+        <span style={{ fontSize: '10px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6 }}>
           {roundLength} ROUNDS
         </span>
       </div>

@@ -16,20 +16,22 @@ const API_BASE = import.meta.env.VITE_API_URL || ''
 // Resolve player names from potentially mixed format (old: string[], new: [{uid, display_name}])
 function getPlayerNames(players) {
   if (!players || players.length === 0) return []
-  if (typeof players[0] === 'string') return players
-  return players.map(p => p.display_name)
+  return players.map(p => {
+    if (typeof p === 'string') return p
+    if (p && typeof p === 'object') return p.display_name || p.displayName || ''
+    return ''
+  }).filter(Boolean)
 }
 
 // Find current user's display name by matching uid
 function findMyPlayerName(players, playerUids, myUid) {
   if (!players || !myUid) return null
-  // New format: [{uid, display_name}]
-  if (players.length > 0 && typeof players[0] === 'object') {
-    const match = players.find(p => p.uid === myUid)
-    return match?.display_name || null
+  // Check object entries first (new format)
+  for (const p of players) {
+    if (typeof p === 'object' && p.uid === myUid) return p.display_name || p.displayName || null
   }
-  // Old format: string[] — can't match by uid, fall back to first player if host
-  if (playerUids && playerUids[0] === myUid) return players[0]
+  // Old format fallback: string array, match by position in playerUids
+  if (playerUids && playerUids[0] === myUid && typeof players[0] === 'string') return players[0]
   return null
 }
 
@@ -139,10 +141,9 @@ export function PointEntryScreen() {
   }
 
   const acceptAllPending = () => {
-    // Only accept pending scores that match the current user's player name
-    if (myPlayerName && pendingScores[myPlayerName] !== undefined) {
-      handleScoreChange(myPlayerName, pendingScores[myPlayerName].toString())
-    }
+    Object.entries(pendingScores).forEach(([player, score]) => {
+      handleScoreChange(player, score.toString())
+    })
     setPendingScores({}); setPopupVisible(false)
   }
 
@@ -179,12 +180,23 @@ export function PointEntryScreen() {
       const gameData = snap.data()
       setGame(gameData)
 
-      // Initialize score inputs for current user only
+      // If user just joined via room code, add them to the players array
       const names = getPlayerNames(gameData.players)
       const myName = findMyPlayerName(gameData.players, gameData.playerUids, user?.uid)
+      const alreadyInPlayers = names.includes(displayName || username)
+      if (!myName && !alreadyInPlayers && user?.uid && (gameData.playerUids || []).includes(user.uid)) {
+        const existingPlayers = gameData.players || []
+        const updatedPlayers = [...existingPlayers, { uid: user.uid, display_name: displayName || username || 'Player' }]
+        const updatedUids = [...(gameData.playerUids || [])]
+        if (!updatedUids.includes(user.uid)) updatedUids.push(user.uid)
+        updateDoc(gameRef, { players: updatedPlayers, playerUids: updatedUids }).catch(err =>
+          console.error('Failed to add self to players:', err)
+        )
+        return // Will re-trigger on next snapshot
+      }
+
       if (myName) {
         setScores(prev => {
-          // Only reset if we don't already have a value for this player
           if (prev[myName] !== undefined && prev[myName] !== '') return prev
           return { ...prev, [myName]: '' }
         })
@@ -199,17 +211,29 @@ export function PointEntryScreen() {
     const unsubRounds = onSnapshot(query(roundsRef, orderBy('submittedAt')), (snap) => {
       const rounds = []
       snap.forEach(d => rounds.push({ id: d.id, ...d.data() }))
-      const names = game ? getPlayerNames(game.players) : []
-      const initTotals = {}
-      names.forEach(p => { initTotals[p] = 0 })
-      rounds.forEach(r => { Object.entries(r.scores).forEach(([player, score]) => { initTotals[player] = (initTotals[player] || 0) + score }) })
-      setRoundHistory(rounds); setTotalScores(initTotals); setCurrentRound(rounds.length + 1)
+      setRoundHistory(rounds)
+      setCurrentRound(rounds.length + 1)
     }, (err) => {
       console.error('Rounds listener error:', err)
     })
 
     return () => { unsubGame(); unsubRounds() }
   }, [gameId])
+
+  // Compute totals from roundHistory + playerNames (avoids stale game closure)
+  useEffect(() => {
+    const names = playerNames
+    const initTotals = {}
+    names.forEach(p => { initTotals[p] = 0 })
+    roundHistory.forEach(r => {
+      if (r.scores) {
+        Object.entries(r.scores).forEach(([player, score]) => {
+          initTotals[player] = (initTotals[player] || 0) + (Number(score) || 0)
+        })
+      }
+    })
+    setTotalScores(initTotals)
+  }, [roundHistory, playerNames])
 
   const handleScoreChange = (player, value) => {
     if (value === '' || value === '-') { setScores(prev => ({ ...prev, [player]: value })); return }
@@ -290,11 +314,25 @@ export function PointEntryScreen() {
   const archiveGame = async () => {
     setArchiving(true)
     try {
+      // Ensure final_scores is always a non-empty dict[str, float]
+      let finalScores = { ...totalScores }
+      if (Object.keys(finalScores).length === 0 && playerNames.length > 0) {
+        // Compute from roundHistory if totalScores is empty
+        playerNames.forEach(p => { finalScores[p] = 0 })
+        roundHistory.forEach(r => {
+          if (r.scores) Object.entries(r.scores).forEach(([p, s]) => { finalScores[p] = (finalScores[p] || 0) + (Number(s) || 0) })
+        })
+      }
+      // Ensure all values are floats
+      Object.keys(finalScores).forEach(k => { finalScores[k] = Number(finalScores[k]) || 0 })
+      // Ensure winner is valid
+      const sorted = getSortedPlayers()
+      const winnerName = sorted.length > 0 ? sorted[0].name : (playerNames[0] || '')
       const token = await user.getIdToken()
       const response = await fetch(`${API_BASE}/games/${gameId}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ players: playerNames, rounds: roundHistory.map((r, i) => ({ round_number: i + 1, scores: r.scores })), final_scores: totalScores, winner: getSortedPlayers()[0]?.name || '' }),
+        body: JSON.stringify({ players: playerNames, rounds: roundHistory.map((r, i) => ({ round_number: i + 1, scores: r.scores })), final_scores: finalScores, winner: winnerName }),
       })
       if (!response.ok) { const errBody = await response.json().catch(() => ({})); console.error('Archive error:', response.status, errBody); throw new Error(errBody.detail || errBody.error || `Server error ${response.status}`) }
       const data = await response.json(); setArchivedGameId(data.id || gameId); return data.id || gameId
@@ -379,7 +417,7 @@ export function PointEntryScreen() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        style={{ minHeight: 'calc(100vh - 76px)', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+        style={{ minHeight: '100vh', background: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
       >
         <div style={{ maxWidth: '480px', width: '100%' }}>
           <div className="kippo-card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -391,7 +429,7 @@ export function PointEntryScreen() {
               {/* Join Code */}
               {game.joinCode && (
                 <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                  <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0', fontFamily: "'Source Code Pro', monospace" }}>GAME CODE</p>
+                  <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0', fontFamily: "'Source Code Pro', monospace" }}>GAME CODE</p>
                   <span style={{
                     fontFamily: "'Source Code Pro', monospace", fontSize: '24px', fontWeight: '900',
                     color: '#ee1f66', letterSpacing: '6px', background: '#29292a',
@@ -401,7 +439,7 @@ export function PointEntryScreen() {
               )}
 
               {/* Players connected */}
-              <p style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', textAlign: 'center', margin: '0 0 12px 0', fontFamily: "'Source Code Pro', monospace" }}>
+              <p style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', textAlign: 'center', margin: '0 0 12px 0', fontFamily: "'Source Code Pro', monospace" }}>
                 {lobbyPlayers.length} PLAYER{lobbyPlayers.length !== 1 ? 'S' : ''} CONNECTED
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
@@ -457,15 +495,15 @@ export function PointEntryScreen() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      style={{ minHeight: 'calc(100vh - 76px)', background: '#000000', backgroundImage: 'url(/bg/pointinput.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', display: 'flex', flexDirection: 'row', position: 'relative', overflowX: 'hidden' }}
+      style={{ minHeight: '100vh', background: '#000000', backgroundImage: 'url(/bg/pointinput.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', display: 'flex', flexDirection: 'row', position: 'relative', overflowX: 'hidden' }}
       className="point-entry-layout"
     >
       {/* Scrim for readability */}
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.7) 100%)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.35) 100%)', pointerEvents: 'none', zIndex: 0 }} />
 
       {/* === SIDEBAR LEADERBOARD === */}
       <div className="kippo-card pe-sidebar" style={{
-        width: '280px', minHeight: 'calc(100vh - 76px)',
+        width: '280px', minHeight: '100vh',
         display: 'flex', flexDirection: 'column',
         padding: '16px', flexShrink: 0,
         borderRight: '1px solid #ffffff',
@@ -595,7 +633,7 @@ export function PointEntryScreen() {
                 </p>
                 <AnimatePresence>
                   {isListening && transcript && (
-                    <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '2px', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Source Code Pro', monospace" }}>
+                    <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', marginTop: '2px', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Source Code Pro', monospace" }}>
                       "{transcript}"
                     </motion.p>
                   )}
@@ -613,23 +651,25 @@ export function PointEntryScreen() {
                     <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#ee1f66', fontFamily: "'Source Code Pro', monospace" }}>VOICE MATCHED — REVIEW</span>
                     <div style={{ display: 'flex', gap: '12px' }}>
                       <button onClick={acceptAllPending} style={{ fontSize: '10px', fontWeight: '700', color: '#ee1f66', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Source Code Pro', monospace" }}>ACCEPT</button>
-                      <button onClick={dismissPending} style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Source Code Pro', monospace" }}>DISMISS</button>
+                      <button onClick={dismissPending} style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Source Code Pro', monospace" }}>DISMISS</button>
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    <motion.button initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} whileTap={{ scale: 0.95 }} onClick={() => acceptPendingScore(myPlayerName)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                        padding: '6px 12px',
-                        background: '#29292a', border: '1px solid #ffffff',
-                        borderRadius: '15px',
-                        cursor: 'pointer', fontSize: '11px', fontWeight: '700', color: '#ffffff',
-                        fontFamily: "'Source Code Pro', monospace",
-                      }}>
-                      <span>{myPlayerName}</span>
-                      <span style={{ fontFamily: "'Source Code Pro', monospace", fontWeight: '900', color: '#ee1f66' }}>{pendingScores[myPlayerName]}</span>
-                      <span style={{ fontSize: '14px', color: '#ee1f66' }}>✓</span>
-                    </motion.button>
+                    {Object.keys(pendingScores).map((name) => (
+                      <motion.button key={name} initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} whileTap={{ scale: 0.95 }} onClick={() => acceptPendingScore(name)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          padding: '6px 12px',
+                          background: '#29292a', border: '1px solid #ffffff',
+                          borderRadius: '15px',
+                          cursor: 'pointer', fontSize: '11px', fontWeight: '700', color: '#ffffff',
+                          fontFamily: "'Source Code Pro', monospace",
+                        }}>
+                        <span>{name}</span>
+                        <span style={{ fontFamily: "'Source Code Pro', monospace", fontWeight: '900', color: '#ee1f66' }}>{pendingScores[name]}</span>
+                        <span style={{ fontSize: '14px', color: '#ee1f66' }}>✓</span>
+                      </motion.button>
+                    ))}
                   </div>
                 </div>
               </motion.div>
@@ -643,11 +683,11 @@ export function PointEntryScreen() {
                 <div className="kippo-card" style={{ padding: '12px 16px', borderTop: '3px solid #ee1f66', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                   <div>
                     <p style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#ee1f66', margin: '0 0 4px 0', fontFamily: "'Source Code Pro', monospace" }}>UNRECOGNIZED NAMES</p>
-                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0, fontFamily: "'Source Code Pro', monospace" }}>
+                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', margin: 0, fontFamily: "'Source Code Pro', monospace" }}>
                       Heard but couldn't match: <span style={{ fontWeight: '700', color: '#ffffff' }}>{unrecognizedNames.join(', ')}</span>
                     </p>
                   </div>
-                  <button onClick={() => setUnrecognizedNames([])} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: '4px', fontSize: '14px' }}>×</button>
+                  <button onClick={() => setUnrecognizedNames([])} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', padding: '4px', fontSize: '14px' }}>×</button>
                 </div>
               </motion.div>
             )}
@@ -737,7 +777,7 @@ export function PointEntryScreen() {
 
       {/* === MODALS === */}
       <Modal isOpen={showZeroConfirm} onClose={() => setShowZeroConfirm(false)} title="Empty Score">
-        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '12px', fontFamily: "'Source Code Pro', monospace" }}>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginBottom: '12px', fontFamily: "'Source Code Pro', monospace" }}>
           {zeroPlayers.length === 1
             ? <>Score for <span style={{ fontWeight: '700', color: '#ffffff' }}>{zeroPlayers[0]}</span> will be recorded as <span style={{ fontWeight: '700', color: '#ffffff', background: '#29292a', padding: '1px 6px', border: '1px solid #ffffff', borderRadius: '10px' }}>0 points</span>.</>
             : <>Scores for <span style={{ fontWeight: '700', color: '#ffffff' }}>{zeroPlayers.join(', ')}</span> will be recorded as <span style={{ fontWeight: '700', color: '#ffffff', background: '#29292a', padding: '1px 6px', border: '1px solid #ffffff', borderRadius: '10px' }}>0 points</span>.</>
@@ -758,11 +798,11 @@ export function PointEntryScreen() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
             </svg>
-            <p style={{ fontSize: '12px', fontWeight: '700', color: 'rgba(255,255,255,0.4)', margin: 0, fontFamily: "'Source Code Pro', monospace" }}>TALLYING FINAL SCORES...</p>
+            <p style={{ fontSize: '12px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', margin: 0, fontFamily: "'Source Code Pro', monospace" }}>TALLYING FINAL SCORES...</p>
           </div>
         ) : (
           <>
-            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '16px', textAlign: 'center', fontFamily: "'Source Code Pro', monospace" }}>WHAT'S NEXT?</p>
+            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '16px', textAlign: 'center', fontFamily: "'Source Code Pro', monospace" }}>WHAT'S NEXT?</p>
             <motion.button whileTap={{ scale: 0.98 }} onClick={() => handleEndGame('rematch')} className="kippo-btn-primary" style={{ width: '100%', marginBottom: '8px', padding: '16px 24px' }}>
               🔄 REMATCH — KEEP ROSTER, RESET SCORES
             </motion.button>
