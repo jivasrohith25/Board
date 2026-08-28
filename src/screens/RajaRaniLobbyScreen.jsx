@@ -96,12 +96,14 @@ export function RajaRaniLobbyScreen() {
   const [view, setView] = useState('menu')
   const [timeLimit, setTimeLimit] = useState(60)
   const [rounds, setRounds] = useState(10)
+  const [maxPlayers, setMaxPlayers] = useState(6)
   const [joinCode, setJoinCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const adjustTimeLimit = (delta) => setTimeLimit((p) => Math.max(15, Math.min(120, p + delta)))
   const adjustRounds = (delta) => setRounds((p) => Math.max(1, Math.min(30, p + delta)))
+  const adjustMaxPlayers = (delta) => setMaxPlayers((p) => Math.max(3, Math.min(10, p + delta)))
 
   const handleCreate = async () => {
     if (loading) return
@@ -118,6 +120,7 @@ export function RajaRaniLobbyScreen() {
         status: 'lobby',
         policeTimeLimit: timeLimit,
         totalRounds: rounds,
+        maxPlayers,
         currentRound: 1,
         joinCode: code,
         createdAt: serverTimestamp(),
@@ -156,6 +159,11 @@ export function RajaRaniLobbyScreen() {
         return
       }
       const alreadyIn = room.players?.some((p) => p.uid === user.uid)
+      if (!alreadyIn && room.maxPlayers && room.players?.length >= room.maxPlayers) {
+        setError('ROOM IS FULL')
+        setLoading(false)
+        return
+      }
       if (!alreadyIn) {
         const existingScores = room.scores || {}
         const updatedPlayers = [...(room.players || []), { uid: user.uid, displayName: displayNameOrFallback }]
@@ -225,12 +233,12 @@ export function RajaRaniLobbyScreen() {
   /* ---------- CREATE VIEW ---------- */
   const renderCreate = () => (
     <motion.div key="create" variants={pageVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.25 }}
-      style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
+      style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '100%', maxWidth: '700px', margin: '0 auto' }}>
 
       {/* Room Settings */}
       <div style={cardStyle}>
         <p style={labelStyle}>ROOM SETTINGS</p>
-        <div className="lobby-settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+        <div className="lobby-settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
           {/* Police Time Limit */}
           <div style={{ ...smallCardStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
             <p style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', opacity: 0.7, margin: 0 }}>
@@ -258,6 +266,21 @@ export function RajaRaniLobbyScreen() {
                 <div style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', marginTop: '5px', opacity: 0.7 }}>ROUNDS</div>
               </div>
               <motion.button whileTap={{ scale: 0.9 }} onClick={() => adjustRounds(1)} disabled={rounds >= 30} style={stepperBtn(true)}>+</motion.button>
+            </div>
+          </div>
+
+          {/* Max Players */}
+          <div style={{ ...smallCardStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+            <p style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', opacity: 0.7, margin: 0 }}>
+              MAX PLAYERS
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <motion.button whileTap={{ scale: 0.9 }} onClick={() => adjustMaxPlayers(-1)} disabled={maxPlayers <= 3} style={stepperBtn(false)}>−</motion.button>
+              <div style={{ textAlign: 'center', minWidth: '50px' }}>
+                <span style={{ fontFamily: FONT, fontSize: '36px', fontWeight: 700, color: '#ee1f66', lineHeight: '1', fontVariantNumeric: 'tabular-nums' }}>{maxPlayers}</span>
+                <div style={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#ffffff', marginTop: '5px', opacity: 0.7 }}>PLAYERS</div>
+              </div>
+              <motion.button whileTap={{ scale: 0.9 }} onClick={() => adjustMaxPlayers(1)} disabled={maxPlayers >= 10} style={stepperBtn(true)}>+</motion.button>
             </div>
           </div>
         </div>
@@ -360,6 +383,9 @@ export function RajaRaniLobbyScreen() {
         @media (max-width: 600px) {
           .lobby-menu-grid { grid-template-columns: 1fr !important; }
           .lobby-settings-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (min-width: 601px) and (max-width: 900px) {
+          .lobby-settings-grid { grid-template-columns: 1fr 1fr !important; }
         }
       `}</style>
     </motion.div>

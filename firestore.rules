@@ -54,6 +54,14 @@ service cloud.firestore {
                                   get(/databases/$(database)/documents/rajaRaniRooms/$(roomId)).data.playerUids;
         allow delete: if false;
       }
+
+      match /reactions/{reactionId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+                      && request.auth.uid in
+                         get(/databases/$(database)/documents/rajaRaniRooms/$(roomId)).data.playerUids;
+        allow delete: if request.auth != null;
+      }
     }
   }
 }

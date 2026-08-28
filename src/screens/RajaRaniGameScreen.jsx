@@ -15,8 +15,18 @@ import {
   arrayUnion,
   serverTimestamp,
   writeBatch,
+  deleteDoc,
 } from 'firebase/firestore'
 import { db, useAuth } from '../contexts/AuthContext'
+
+/* ─── Emoji Reactions Config ─── */
+const REACTIONS = [
+  { emoji: '😂', label: 'Funny' },
+  { emoji: '🤣', label: 'Laughing' },
+  { emoji: '😢', label: 'Sad' },
+  { emoji: '❤️', label: 'Heart' },
+  { emoji: '😏', label: 'Teasing' },
+]
 
 const FONT = "'Source Code Pro', monospace"
 
@@ -78,10 +88,20 @@ const GHOST_BTN = {
 }
 
 const ROLE_META = {
-  police:   { icon: '\u{1F6A9}', label: 'POLICE',   color: '#33beff' },
-  thief:    { icon: '\u{1F5E1}️', label: 'THIEF',     color: ACCENT },
-  civilian: { icon: '\u{1F464}', label: 'CIVILIAN', color: '#ffffff' },
+  police:    { icon: '\u{1F6A9}', label: 'POLICE',    color: '#33beff',  points: '100/0' },
+  thief:     { icon: '\u{1F5E1}️', label: 'THIEF',      color: ACCENT,    points: '0/100' },
+  raja:      { icon: '\u{1F451}', label: 'RAJA',       color: '#FFD700',  points: '1000' },
+  rani:      { icon: '\u{1F483}', label: 'RANI',       color: '#FF69B4',  points: '800' },
+  commander: { icon: '\u{2694}️', label: 'COMMANDER', color: '#FF6347',  points: '500' },
+  prince:    { icon: '\u{1F3F0}', label: 'PRINCE',     color: '#9370DB',  points: '500' },
+  farmer:    { icon: '\u{1F33E}', label: 'FARMER',     color: '#90EE90',  points: '300' },
+  milkman:   { icon: '\u{1F95B}', label: 'MILKMAN',    color: '#87CEEB',  points: '250' },
+  soldier:   { icon: '\u{1F6E1}️', label: 'SOLDIER',    color: '#CD853F',  points: '200' },
+  civilian:  { icon: '\u{1F464}', label: 'CIVILIAN',  color: '#ffffff',  points: '100' },
 }
+
+/* Pool of random roles (excludes police & thief who are mandatory) */
+const RANDOM_ROLES = ['raja', 'rani', 'commander', 'prince', 'farmer', 'milkman', 'soldier', 'civilian']
 
 function fisherYates(arr) {
   const a = [...arr]
@@ -93,42 +113,42 @@ function fisherYates(arr) {
 }
 
 /**
- * Scoring:
- *   Raja  = 1000
- *   Rani  = 800
- *   Police = -100 if catches thief, 0 if not
- *   Thief = 0 if caught, random 200-799 if escaped
- *   Civilian = random 100-799 unique per civilian (at least 1pt apart)
+ * Fixed-point scoring:
+ *   Police catches thief → Police: 100, Thief: 0
+ *   Police misses/timeout → Police: 0, Thief: 100
+ *   All other roles → fixed points from ROLE_META
  */
 function computeRoundScores(roles, policeSelectionCorrect) {
   const scores = {}
-  const civilians = []
 
   Object.entries(roles).forEach(([uid, role]) => {
-    if (role === 'raja') scores[uid] = 1000
-    else if (role === 'rani') scores[uid] = 800
-    else if (role === 'police') scores[uid] = policeSelectionCorrect ? -100 : 0
-    else if (role === 'thief') scores[uid] = 0 // caught case; set below if escaped
-    else civilians.push(uid)
+    if (role === 'police') {
+      scores[uid] = policeSelectionCorrect ? 100 : 0
+    } else if (role === 'thief') {
+      scores[uid] = policeSelectionCorrect ? 0 : 100
+    } else {
+      scores[uid] = ROLE_META[role]?.points
+        ? parseInt(ROLE_META[role].points, 10)
+        : 100
+    }
   })
 
-  // Thief escaped — random 200-799
-  const thiefUid = Object.entries(roles).find(([, r]) => r === 'thief')?.[0]
-  if (thiefUid && !policeSelectionCorrect) {
-    scores[thiefUid] = 200 + Math.floor(Math.random() * 600)
-  }
-
-  // Civilians — unique random 100-799, at least 1pt apart
-  if (civilians.length > 0) {
-    const pool = new Set()
-    while (pool.size < civilians.length) {
-      pool.add(100 + Math.floor(Math.random() * 700))
-    }
-    const sorted = [...pool].sort((a, b) => a - b)
-    civilians.forEach((uid, i) => { scores[uid] = sorted[i] })
-  }
-
   return scores
+}
+
+/* Assign roles for a round: police + thief mandatory, rest random from pool */
+function assignRoles(playerUids) {
+  const shuffled = fisherYates(playerUids)
+  const roles = {}
+  roles[shuffled[0]] = 'police'
+  roles[shuffled[1]] = 'thief'
+
+  const pool = fisherYates(RANDOM_ROLES)
+  for (let i = 2; i < shuffled.length; i++) {
+    roles[shuffled[i]] = pool[(i - 2) % pool.length]
+  }
+
+  return roles
 }
 
 /* ─── Card Reveal ─── */
@@ -244,11 +264,13 @@ export function RajaRaniGameScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [roundResults, setRoundResults] = useState(null)
+  const [reactions, setReactions] = useState([])
 
   const timerRef = useRef(null)
   const timerStartRef = useRef(null)
   const unsubRoomRef = useRef(null)
   const unsubRoundRef = useRef(null)
+  const unsubReactionsRef = useRef(null)
   const hasStartedRound = useRef(false)
 
   const myUid = user?.uid
@@ -306,7 +328,12 @@ export function RajaRaniGameScreen() {
         setRoundResults(data)
         setLocalRoundScores(data.roundScores || {})
       } else if (data.status === 'active') {
-        if (!hasRevealed) {
+        if (data.policeTurnStartedAt) {
+          /* Timer already started — restore correct phase for reconnecting player */
+          setHasRevealed(true)
+          const myRoleInRound = data.roles?.[myUid]
+          setPhase(myRoleInRound === 'police' ? 'selecting' : 'waiting')
+        } else if (!hasRevealed) {
           setPhase('reveal')
         }
       }
@@ -315,7 +342,7 @@ export function RajaRaniGameScreen() {
     })
 
     return () => { unsubRoundRef.current?.() }
-  }, [room?.currentRound, room?.status, roomId])
+  }, [room?.currentRound, room?.status, roomId, myUid])
 
   /* ─── Reset local state on new round ─── */
   useEffect(() => {
@@ -337,6 +364,45 @@ export function RajaRaniGameScreen() {
     setLocalRoundScores({})
     hasStartedRound.current = false
   }, [room?.currentRound])
+
+  /* ─── Subscribe to reactions (Raja Rani only) ─── */
+  useEffect(() => {
+    if (!room || room.status !== 'active') return
+
+    const reactionsRef = collection(db, 'rajaRaniRooms', roomId, 'reactions')
+    unsubReactionsRef.current = onSnapshot(reactionsRef, (snap) => {
+      const now = Date.now()
+      const active = []
+      snap.forEach((d) => {
+        const data = d.data()
+        const age = now - (data.createdAt?.toMillis?.() || 0)
+        if (age < 4000) {
+          active.push({ id: d.id, ...data, age })
+        } else {
+          /* auto-delete expired reactions */
+          deleteDoc(doc(db, 'rajaRaniRooms', roomId, 'reactions', d.id)).catch(() => {})
+        }
+      })
+      setReactions(active)
+    }, () => {})
+
+    return () => { unsubReactionsRef.current?.() }
+  }, [roomId, room?.status])
+
+  /* Send a reaction */
+  const sendReaction = useCallback(async (emoji) => {
+    if (!myUid || !roomId) return
+    try {
+      await setDoc(doc(db, 'rajaRaniRooms', roomId, 'reactions', `${myUid}_${Date.now()}`), {
+        uid: myUid,
+        displayName: user?.displayName || 'Player',
+        emoji,
+        createdAt: serverTimestamp(),
+      })
+    } catch (err) {
+      console.error('Reaction failed:', err)
+    }
+  }, [myUid, roomId, user])
 
   /* ─── Timer countdown ─── */
   useEffect(() => {
@@ -377,14 +443,7 @@ export function RajaRaniGameScreen() {
 
     hasStartedRound.current = true
     const nextRound = (room.currentRound || 0) + 1
-    const uids = fisherYates(players.map((p) => p.uid))
-
-    const roles = {}
-    roles[uids[0]] = 'police'
-    roles[uids[1]] = 'thief'
-    for (let i = 2; i < uids.length; i++) {
-      roles[uids[i]] = 'civilian'
-    }
+    const roles = assignRoles(players.map((p) => p.uid))
 
     const roundData = {
       roundNumber: nextRound,
@@ -522,13 +581,7 @@ export function RajaRaniGameScreen() {
     setLocalRoundScores({})
     setSubmitting(false)
 
-    const uids = fisherYates(players.map((p) => p.uid))
-    const roles = {}
-    roles[uids[0]] = 'police'
-    roles[uids[1]] = 'thief'
-    for (let i = 2; i < uids.length; i++) {
-      roles[uids[i]] = 'civilian'
-    }
+    const roles = assignRoles(players.map((p) => p.uid))
 
     try {
       const batch = writeBatch(db)
@@ -757,20 +810,21 @@ export function RajaRaniGameScreen() {
 
   /* ─── Phase: Selecting (police) ─── */
   const renderSelecting = () => (
-    <div style={{ minHeight: '100vh', padding: '32px 16px', maxWidth: '480px', margin: '0 auto' }}>
+    <div style={{ padding: '32px 16px', maxWidth: '480px', margin: '0 auto' }}>
       <div style={{ ...LABEL_STYLE, padding: 0, marginBottom: '24px', textAlign: 'center', fontSize: '14px' }}>
         IDENTIFY THE THIEF
       </div>
 
       <TimerBar remaining={timeRemaining} total={policeTimeLimit} />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+      <div className="rr-select-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
         {players.map((p) => {
           const isMe = p.uid === myUid
           const isSelected = selectedTarget === p.uid
           return (
             <motion.div
               key={p.uid}
+              className="rr-select-btn"
               whileTap={!isMe ? { scale: 0.98 } : {}}
               onClick={!isMe && !submitting ? () => setSelectedTarget(p.uid) : undefined}
               style={{
@@ -781,9 +835,11 @@ export function RajaRaniGameScreen() {
                 justifyContent: 'space-between',
                 cursor: isMe ? 'default' : 'pointer',
                 opacity: isMe ? 0.4 : 1,
-                borderColor: isSelected ? ACCENT : 'rgba(255,255,255,0.12)',
+                borderColor: isSelected ? ACCENT : 'rgba(255,255,255,0.2)',
+                borderWidth: isSelected ? '2px' : '1px',
                 transform: isSelected ? 'scale(1.02)' : 'scale(1)',
                 transition: 'all 0.15s ease',
+                minHeight: '52px',
               }}
             >
               <span style={{ fontFamily: FONT, fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
@@ -1022,6 +1078,8 @@ export function RajaRaniGameScreen() {
   )
 
   /* ─── Render Phase ─── */
+  const showGameUI = room?.status === 'active' && (phase === 'reveal' || phase === 'waiting' || phase === 'selecting' || phase === 'result')
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -1029,6 +1087,32 @@ export function RajaRaniGameScreen() {
       exit={{ opacity: 0 }}
       style={{ minHeight: '100vh', background: '#000000', fontFamily: FONT }}
     >
+      {/* ─── Room Code Badge (always visible during active game) ─── */}
+      {room?.joinCode && showGameUI && (
+        <div className="rr-room-badge" style={{
+          position: 'fixed',
+          top: '12px',
+          right: '12px',
+          zIndex: 100,
+          background: 'rgba(41,41,42,0.9)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          borderRadius: '10px',
+          padding: '6px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+        }}>
+          <span style={{ fontFamily: FONT, fontSize: '8px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            ROOM
+          </span>
+          <span style={{ fontFamily: FONT, fontSize: '13px', fontWeight: 900, color: '#ffffff', letterSpacing: '0.15em' }}>
+            {room.joinCode}
+          </span>
+        </div>
+      )}
+
       <AnimatePresence mode="wait">
         {phase === 'reveal' && (
           <motion.div key="reveal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -1057,6 +1141,75 @@ export function RajaRaniGameScreen() {
         )}
       </AnimatePresence>
 
+      {/* ─── Floating Reaction Bar (Raja Rani only) ─── */}
+      {room?.status === 'active' && (phase === 'waiting' || phase === 'selecting' || phase === 'result') && (
+        <div className="rr-reaction-bar" style={{
+          position: 'fixed',
+          bottom: '16px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 100,
+          display: 'flex',
+          gap: '8px',
+          background: 'rgba(41,41,42,0.85)',
+          border: '1px solid rgba(255,255,255,0.15)',
+          borderRadius: '24px',
+          padding: '8px 14px',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+        }}>
+          {REACTIONS.map((r) => (
+            <motion.button
+              key={r.emoji}
+              whileTap={{ scale: 1.3 }}
+              onClick={() => sendReaction(r.emoji)}
+              title={r.label}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '22px',
+                cursor: 'pointer',
+                padding: '4px',
+                lineHeight: 1,
+                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))',
+              }}
+            >
+              {r.emoji}
+            </motion.button>
+          ))}
+        </div>
+      )}
+
+      {/* ─── Floating Reaction Popups ─── */}
+      <AnimatePresence>
+        {reactions.map((r) => {
+          /* Spread horizontally across screen, start from bottom, float up */
+          const seed = (r.id || '').split('_').pop() || '0'
+          const x = 10 + (parseInt(seed, 10) % 80)
+          const drift = ((parseInt(seed, 10) % 30) - 15)
+          return (
+            <motion.div
+              key={r.id}
+              initial={{ opacity: 1, y: 0, x: 0, scale: 0.6 }}
+              animate={{ opacity: [1, 1, 0], y: -500, x: drift, scale: [0.6, 1.2, 1.4] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 3.5, ease: 'easeOut' }}
+              style={{
+                position: 'fixed',
+                bottom: '70px',
+                left: `${x}%`,
+                zIndex: 99,
+                fontSize: '36px',
+                pointerEvents: 'none',
+                filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.7))',
+              }}
+            >
+              {r.emoji}
+            </motion.div>
+          )
+        })}
+      </AnimatePresence>
+
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @media (max-width: 480px) {
@@ -1064,9 +1217,12 @@ export function RajaRaniGameScreen() {
           .rr-game-card .card-q { font-size: 56px !important; }
           .rr-game-card .card-icon { font-size: 44px !important; }
           .rr-game-card .card-label { font-size: 14px !important; }
-          .rr-result-banner { font-size: 18px !important; }
-          .rr-label { font-size: 12px !important; padding: 0 !important; }
-          .rr-player-row { padding: 12px 14px !important; }
+          .rr-select-btn { padding: 12px 14px !important; }
+          .rr-select-btn span:first-child { font-size: 13px !important; }
+          .rr-room-badge { top: 8px !important; right: 8px !important; padding: 4px 10px !important; }
+          .rr-room-badge span:last-child { font-size: 12px !important; }
+          .rr-reaction-bar { gap: 4px !important; padding: 6px 10px !important; bottom: 10px !important; }
+          .rr-reaction-bar button { font-size: 18px !important; }
         }
       `}</style>
     </motion.div>

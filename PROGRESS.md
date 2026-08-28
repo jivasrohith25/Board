@@ -1,31 +1,145 @@
-# Board Game Scorekeeper — Project Progress
+# Kippo — Project Progress
+
+> **Kippo** — *Track scores. Crown winners.*
+
+A full-stack board game scorekeeper web app. Two game modes: standard board game scoring and a multiplayer **Raja Rani** party game (social deduction — police, thief, civilians each round). Built for a GCP hackathon.
+
+**Live:** https://board-game-scorekeeper-d61df.web.app
+
+---
+
+## Tech Stack
+
+| Layer | Tech |
+|-------|------|
+| Frontend | React 18 + Vite 5 |
+| Styling | Tailwind CSS 3.4 + inline styles |
+| Animation | Framer Motion 11 |
+| UI Extras | canvas-confetti, lucide-react, uuid |
+| Font | Source Code Pro (monospace-only design system) |
+| Auth | Firebase Authentication (Google OAuth) |
+| Live State | Cloud Firestore |
+| Backend | Python FastAPI on Cloud Run |
+| AI Commentary | Google Vertex AI — Gemini 2.5 Flash (`google.genai`) |
+| History Archive | Per-user SQLite files in GCS bucket `bgsk-game-history` |
+| Hosting | Firebase Hosting |
+| Container | Docker (Python 3.12-slim) |
+
+---
 
 ## What's Built
 
-### Frontend (React + Vite + Tailwind)
-- **LoginScreen** — Google OAuth via Firebase, atomic username claim
-- **NameInputScreen** — Player chips, round length selector (default 5), dice button, game history button
-- **PointEntryScreen** — Live score inputs, leaderboard sidebar, submit/undo rounds, end game modal (rematch + end)
-- **ResultsScreen** — Podium with confetti, fireworks, crown animation, view-in-history button
-- **HistoryScreen** — Scrollable list of past games from SQLite archive
-- **HistoryDetailScreen** — Round-by-round table, winner card, final standings
-- **DicePage** — Animated SVG dice roller with roll history
-- **ToastContext** — Toast notifications (info/success/error)
-- **ErrorBoundary** — Global error catch
+### Frontend Screens (12 screens)
 
-### Backend (Python FastAPI on Cloud Run)
-- `POST /games/{game_id}/complete` — Archive game to per-user SQLite in GCS
-- `GET /history/{username}` — List all past games
-- `GET /history/{username}/{game_id}` — Single game detail with rounds
-- `GET /health` — Health check
-- Firebase ID token auth for all data endpoints
-- Per-username asyncio.Lock for GCS write concurrency
+| Screen | File | Description |
+|--------|------|-------------|
+| **LoginScreen** | `src/screens/LoginScreen.jsx` | Landing page — background image, Google OAuth button, username claiming form, post-login actions (Start Game, Join, Raja Rani, History) |
+| **NameInputScreen** | `src/screens/NameInputScreen.jsx` | Game setup — player name entry (duplicate detection, localStorage draft persistence), round length selector, game creation to Firestore |
+| **PointEntryScreen** | `src/screens/PointEntryScreen.jsx` | Core gameplay — score inputs, live leaderboard sidebar, voice input, offline queue, undo last round, end-game modal, join code with copy, AI coach commentary per round, lobby mode for non-host |
+| **ResultsScreen** | `src/screens/ResultsScreen.jsx` | Post-game — animated podium with confetti, fireworks, victory music, game analytics (total points, avg score, win margin, biggest lead, comeback stats, player consistency/std dev), AI coach finale comment |
+| **HistoryScreen** | `src/screens/HistoryScreen.jsx` | Game history list from Cloud Storage SQLite archive via backend API |
+| **HistoryDetailScreen** | `src/screens/HistoryDetailScreen.jsx` | Single game detail — winner banner, final standings, round-by-round table |
+| **DicePage** | `src/screens/DicePage.jsx` | SVG dice roller with animated roll and roll history |
+| **ProfileScreen** | `src/screens/ProfileScreen.jsx` | Avatar selection grid (8 avatars), display name change, logout |
+| **JoinGameScreen** | `src/screens/JoinGameScreen.jsx` | Join existing game by 6-character code |
+| **RajaRaniLobbyScreen** | `src/screens/RajaRaniLobbyScreen.jsx` | Raja Rani multiplayer lobby — create room (police time limit, total rounds) or join by code |
+| **RajaRaniGameScreen** | `src/screens/RajaRaniGameScreen.jsx` | Raja Rani gameplay — card reveal, role assignment (Fisher-Yates shuffle), police selection phase with countdown, round results, cumulative scores, host controls |
+| **RajaRaniPodiumScreen** | `src/screens/RajaRaniPodiumScreen.jsx` | Raja Rani results — podium bars, final standings with police catches/thief escapes stats, round-by-round summary with role outcomes, confetti, victory music |
 
-### Infrastructure
-- Firebase Auth (Google OAuth)
-- Cloud Firestore (live game state + user profiles)
-- Cloud Storage bucket `bgsk-game-history` (SQLite archives)
-- Firebase Hosting (SPA with rewrites)
+### Frontend Components (10 components)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| **NavBar** | `src/components/NavBar.jsx` | Top nav — Raja Rani, Dice, History links + profile avatar; subnav with username |
+| **ErrorBoundary** | `src/components/ErrorBoundary.jsx` | React error boundary with styled fallback UI |
+| **LoadingSkeleton** | `src/components/LoadingSkeleton.jsx` | Pulsing card skeleton loader |
+| **Modal** | `src/components/Modal.jsx` | Modal + ConfirmModal with backdrop, spring animation |
+| **EmptyState** | `src/components/EmptyState.jsx` | Generic empty state (icon, title, description, action) |
+| **FireworksBackground** | `src/components/FireworksBackground.jsx` | Canvas-based fireworks particle system for results page |
+| **GameCoach** | `src/components/GameCoach.jsx` | AI commentator "Mr. Slow" — comment bubble with emotion-driven character images (default/happy/laugh/shocked/sad), typing indicator |
+| **PlayerAvatar** | `src/components/PlayerAvatar.jsx` | Circular avatar display with image or initials fallback, multiple sizes |
+| **TiltCard** | `src/components/TiltCard.jsx` | 3D tilt card effect using Framer Motion (mouse-follow rotation, glare sweep) |
+| **ThemeToggle** | `src/components/ThemeToggle.jsx` | No-op placeholder (Kippo is dark-only) |
+
+### Frontend Contexts (3 contexts)
+
+| Context | File | Description |
+|---------|------|-------------|
+| **AuthContext** | `src/contexts/AuthContext.jsx` | Firebase Auth init, Google OAuth login, username claim (Firestore transaction), avatar management, displayName update, username availability check (debounced) |
+| **ToastContext** | `src/contexts/ToastContext.jsx` | Toast notifications (info/success/error), auto-dismiss, action buttons |
+| **ThemeContext** | `src/contexts/ThemeContext.jsx` | Static dark-theme context (no-op, Kippo is dark-only) |
+
+### Hooks & Config
+
+| File | Description |
+|------|-------------|
+| `src/hooks/useVoiceInput.js` | Web Speech API hook — speech recognition with interim/final results, returns raw transcript for server-side parsing |
+| `src/config/avatars.js` | 8 predefined avatar definitions (rohith, dinesh, david, anirudh, roshaun, dhanya, kiruthika, afna) |
+
+### Styles
+
+| File | Description |
+|------|-------------|
+| `src/index.css` | Tailwind directives, Kippo design tokens (CSS custom properties), component classes (kippo-card, kippo-btn-primary, kippo-btn-ghost, kippo-btn-danger, kippo-input, kippo-nav, kippo-subnav, kippo-stat), animations (confetti-burst, spin, pulse), scrollbar styling, reduced-motion media query |
+
+### Backend (Python FastAPI)
+
+**Files:** `backend/main.py`, `backend/requirements.txt`, `backend/Dockerfile`, `backend/.dockerignore`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/players` | GET | Get players for a game (auth required) |
+| `/parse-voice` | POST | Parse spoken text into player-score pairs (regex-based) |
+| `/games/{game_id}/complete` | POST | Archive completed game to per-user SQLite in GCS |
+| `/history/{username}` | GET | List all past games |
+| `/history/{username}/{game_id}` | GET | Single game detail with rounds |
+| `/coach-comment` | POST | AI in-round commentary (Gemini 2.5 Flash) |
+| `/coach-finale` | POST | AI end-of-game wrap-up commentary |
+
+**Security:** Firebase ID token verification on all data endpoints. Per-username `asyncio.Lock` for GCS write concurrency. Rate limiting: 100 req/15 min per IP. CORS restricted to `ALLOWED_ORIGINS` env var.
+
+### Design System
+
+Fully documented in `DESIGN.md`. Dark-only "Kippo" brand:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| Void Black | `#000000` | Page canvas |
+| Carbon | `#29292a` | Card surfaces |
+| Kippo Pink | `#ee1f66` | Single chromatic accent (CTAs, active states, highlights) |
+| Ghost White | `#ffffff` | Borders, text |
+| Font | Source Code Pro | Monospace-only, all uppercase, generous letter-spacing |
+
+Tailwind config in `tailwind.config.js` maps these to utility classes.
+
+### Static Assets
+
+| Directory | Contents |
+|-----------|----------|
+| `public/avatars/` | 8 player avatar PNGs |
+| `public/coach/` | 5 coach character emotion PNGs (default, happy, laugh, shocked, sad) |
+| `public/bg/` | Background images (main_page.jpg, podium page.png, pointinput.png) |
+| `public/victory_music.mpeg` | Victory celebration music |
+| `public/favicon.svg` | Favicon |
+
+### Firestore Collections
+
+| Collection | Purpose |
+|------------|---------|
+| `users/{uid}` | User profiles (username, displayName, photoURL, avatar, createdAt) |
+| `usernames/{username}` | Username uniqueness registry (uid, claimedAt) — create-once, immutable |
+| `games/{gameId}` | Board game sessions (createdBy, players, playerUids, roundLength, currentRound, status, joinCode) |
+| `games/{gameId}/rounds/{roundId}` | Individual round scores |
+| `rajaRaniRooms/{roomId}` | Raja Rani multiplayer rooms (host, players, scores, settings) |
+| `rajaRaniRooms/{roomId}/rounds/{roundId}` | Raja Rani round data (roles, police selection, scores) |
+
+### Security
+
+- Firestore rules enforce owner-only writes, immutable usernames, authenticated reads
+- Backend verifies Firebase ID tokens on every request
+- Service account scoped to Storage Object Admin + Datastore User + Vertex AI User only
+- CORS restricted to `ALLOWED_ORIGINS` env var
 
 ---
 
@@ -34,7 +148,9 @@
 ### Cloud Run backend is DOWN
 The service `bgsk-backend` no longer exists or was deleted. All API calls fail with `ERR_NAME_NOT_RESOLVED`.
 
-**Fix:** Redeploy the backend.
+**Impact:** Game archival, history retrieval, voice input parsing, and AI coach commentary are all non-functional. Core gameplay (Firestore-based) still works.
+
+**Fix:** Redeploy the backend (see Steps below).
 
 ---
 
@@ -101,10 +217,18 @@ firebase deploy --only hosting
 - Check history page shows archived game
 - Check results/podium page loads
 
+### Alternative: Use deploy.sh
+```
+bash deploy.sh
+```
+Full automation — enables GCP APIs, creates bucket + service account, deploys Firestore rules, builds/deploys backend and frontend.
+
 ---
 
 ## .env File
-Located at project root, NOT committed to git (in .gitignore).
+
+Located at project root (`.env`) and `.env.local`. **NOT committed to git** (in .gitignore).
+
 ```
 VITE_FIREBASE_API_KEY=AIzaSyDaDFXL7Mg4JJyPyVAUjDagWz_VBDDxYSA
 VITE_FIREBASE_AUTH_DOMAIN=board-game-scorekeeper-d61df.firebaseapp.com
@@ -119,11 +243,17 @@ VITE_API_URL=<CLOUD_RUN_BACKEND_URL>
 
 ---
 
-## Git Remotes
-- `origin` → `https://github.com/Dineshreddy-13/gcp.git`
-- `board` → `https://github.com/jivasrohith25/Board.git`
+## Key Code Patterns
 
-Push with: `git push board main`
+- **Optimistic UI:** Leaderboard updates instantly on round submit before Firestore write completes
+- **Offline resilience:** Failed writes queue up and retry on reconnect
+- **Atomic operations:** Username claim uses Firestore `runTransaction` for check-and-create
+- **Per-username write locks:** Backend uses `asyncio.Lock` per username to prevent SQLite corruption from concurrent GCS writes
+- **Join code system:** 6-character alphanumeric codes (ambiguous chars like 0/O/1/I removed) for multiplayer game joining
+- **Draft persistence:** Player list saved to `localStorage` so mid-setup refresh doesn't lose data
+- **Undo window:** 10-second window to undo last round submission
+- **Rematch:** Archives current game, resets scores, keeps players, generates new join code
+- **Raja Rani scoring:** Raja=1000pts, Rani=800pts, Police=-100 if catches thief/0 if not, Thief=0 if caught/200-799 random if escaped, Civilians=100-799 unique random
 
 ---
 
@@ -133,11 +263,12 @@ Push with: `git push board main`
 Browser (Firebase Hosting)
   │
   ├── Firebase Auth (Google OAuth)
-  ├── Cloud Firestore (games, rounds, users, usernames)
+  ├── Cloud Firestore (games, rounds, users, usernames, rajaRaniRooms)
   │
   └── API calls → Cloud Run backend (FastAPI)
                     ├── Firebase Admin (token verification)
-                    └── Cloud Storage (per-user .db SQLite files)
+                    ├── Cloud Storage (per-user .db SQLite files)
+                    └── Vertex AI / Gemini 2.5 Flash (AI coach commentary)
 ```
 
 ---
@@ -148,13 +279,35 @@ Browser (Firebase Hosting)
 - **Cloud Run cold starts** — `--min-instances=0` loses in-memory state. Use `--min-instances=1`
 - **Firestore security rules** — usernames immutable, games/rounds owner-only CRUD
 - **GCS write concurrency** — per-username asyncio.Lock prevents lost writes on parallel requests
+- **Voice input** — Web Speech API browser support varies; works best in Chrome
+
+---
+
+## Git Remotes
+- `origin` → `https://github.com/Dineshreddy-13/gcp.git`
+- `board` → `https://github.com/jivasrohith25/Board.git`
+
+Push with: `git push board main`
+
+---
+
+## Documentation Files
+
+| File | Purpose |
+|------|---------|
+| `README.md` | Project overview, architecture, setup, deploy, API docs |
+| `progress.md` | This file — current build status, known issues, recovery steps |
+| `DESIGN.md` | Full Kippo design system (colors, typography, spacing, components) |
+| `FIREBASE_SETUP.md` | Firebase + GCP setup guide, Firestore schema documentation |
+| `deploy.sh` | Full deployment automation script |
 
 ---
 
 ## What's NOT Needed Anymore
-- Voice input (removed from frontend and backend)
+- Voice input parsing on frontend (moved to backend server-side regex)
 - Session registration endpoints (removed)
 - `difflib` / `io` imports (removed from backend)
+- Light mode / theme toggle (Kippo is dark-only)
 
 ---
 
@@ -165,3 +318,4 @@ Browser (Firebase Hosting)
 - Firebase Auth: https://console.firebase.google.com → Authentication
 - IAM: https://console.cloud.google.com/iam/admin/iam
 - Firebase Hosting: https://console.firebase.google.com → Hosting
+- Vertex AI: https://console.cloud.google.com/vertex-ai

@@ -63,20 +63,31 @@ export function NameInputScreen() {
 
   const handleStart = async () => {
     if (players.length < 2 || starting) return
+    if (!user?.uid) {
+      setError('Not logged in. Please refresh and log in again.')
+      return
+    }
     setStarting(true)
     try {
       const gameId = uuidv4()
       await setDoc(doc(db, 'games', gameId), {
-        createdBy: user.uid, username, players,
+        createdBy: user.uid,
+        username: username || user.displayName || 'player',
+        players,
         playerUids: [user.uid],
         roundLength,
-        currentRound: 1, status: 'active', createdAt: serverTimestamp(),
+        currentRound: 1,
+        status: 'active',
+        createdAt: serverTimestamp(),
       })
       localStorage.removeItem(STORAGE_KEY)
       navigate(`/point-entry/${gameId}`)
     } catch (err) {
       console.error('Failed to create game:', err)
-      setError('Failed to create game. Please try again.')
+      const msg = err?.code === 'permission-denied'
+        ? 'Permission denied. Deploy Firestore rules: firebase deploy --only firestore:rules'
+        : err?.message || 'Unknown error'
+      setError(`Failed to create game: ${msg}`)
       setStarting(false)
     }
   }
