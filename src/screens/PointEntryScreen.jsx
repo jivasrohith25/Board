@@ -525,16 +525,16 @@ export function PointEntryScreen() {
           )}
         </div>
 
-        {/* Join Code + Copy */}
+        {/* Join Code + Copy — compact on mobile */}
         {game?.joinCode && (
-          <div style={{ background: '#29292a', border: '1px solid #ee1f66', padding: '8px', marginBottom: '12px', textAlign: 'center', borderRadius: '15px' }}>
+          <div className="pe-join-code" style={{ background: '#29292a', border: '1px solid #ee1f66', padding: '8px', marginBottom: '12px', textAlign: 'center', borderRadius: '15px' }}>
             <p style={{ fontSize: '8px', fontWeight: '700', color: '#ee1f66', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0', fontFamily: "'Source Code Pro', monospace" }}>JOIN CODE</p>
             <p style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '20px', fontWeight: '900', color: '#ffffff', letterSpacing: '6px', margin: '0 0 6px 0' }}>{game.joinCode}</p>
             <CopyButton code={game.joinCode} />
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+        <div className="pe-leaderboard-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
           <AnimatePresence mode="popLayout">
             {sorted.map((player, i) => {
               const isTied = i > 0 && player.score === sorted[i - 1].score
@@ -584,7 +584,7 @@ export function PointEntryScreen() {
       </div>
 
       {/* === MAIN CONTENT === */}
-      <div className="pe-main" style={{ flex: 1, padding: '16px', overflowY: 'auto', position: 'relative' }}>
+      <div className="pe-main" style={{ flex: 1, padding: '16px', position: 'relative' }}>
         <div style={{ maxWidth: '720px', margin: '0 auto' }}>
           {/* Round Header */}
           <div className="kippo-label-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -694,19 +694,19 @@ export function PointEntryScreen() {
           </AnimatePresence>
 
           {/* Score Inputs + Coach — all players editable */}
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', alignItems: 'flex-start' }}>
+          <div className="pe-scores-layout" style={{ display: 'flex', gap: '16px', marginBottom: '16px', alignItems: 'flex-start' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
               {playerNames.map((player, idx) => {
                 const isMe = player === myPlayerName
                 return (
-                  <div key={player} style={{
+                  <div key={player} className="pe-score-row" style={{
                     display: 'flex', alignItems: 'center', gap: '12px',
                     padding: '8px 12px',
                     background: isMe ? 'rgba(238, 31, 102, 0.06)' : '#29292a',
                     border: isMe ? '3px solid #ee1f66' : '1px solid #ffffff',
                     borderRadius: '10px',
                   }}>
-                    <span style={{ flex: 1, fontWeight: '700', fontSize: '12px', color: '#ffffff', paddingLeft: '4px', fontFamily: "'Source Code Pro', monospace" }}>
+                    <span style={{ flex: 1, fontWeight: '700', fontSize: '12px', color: '#ffffff', paddingLeft: '4px', fontFamily: "'Source Code Pro', monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {player}
                       {isMe && <span style={{ fontSize: '9px', color: '#ee1f66', marginLeft: '6px' }}>(YOU)</span>}
                     </span>
@@ -717,12 +717,13 @@ export function PointEntryScreen() {
                       value={scores[player] ?? ''}
                       onChange={(e) => handleScoreChange(player, e.target.value)}
                       placeholder="0"
+                      className="pe-score-input"
                       style={{
                         width: '100px', textAlign: 'center',
                         fontFamily: "'Source Code Pro', monospace", fontSize: '16px', fontWeight: '900',
                         background: '#000000', color: '#ffffff',
                         border: '1px solid #ffffff', borderRadius: '10px',
-                        padding: '8px', outline: 'none',
+                        padding: '8px', outline: 'none', flexShrink: 0,
                       }}
                     />
                   </div>
@@ -730,8 +731,8 @@ export function PointEntryScreen() {
               })}
             </div>
 
-            {/* Coach */}
-            <div style={{ width: '200px', flexShrink: 0 }}>
+            {/* Coach — hidden on mobile */}
+            <div className="pe-coach" style={{ width: '200px', flexShrink: 0 }}>
               <GameCoach comment={coachComment} emotion={coachEmotion} fadeAfterMs={5000} permanent isTyping={coachTyping} />
             </div>
           </div>
@@ -816,8 +817,18 @@ export function PointEntryScreen() {
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         @media (max-width: 768px) {
           .point-entry-layout { flex-direction: column !important; }
-          .pe-sidebar { width: 100% !important; min-height: auto !important; border-right: none !important; border-bottom: 1px solid #ffffff !important; max-height: 200px; overflow-y: auto; border-radius: 15px !important; }
-          .pe-main { padding: 12px !important; }
+          .pe-sidebar { width: 100% !important; min-height: auto !important; max-height: 150px !important; overflow-y: auto !important; border-right: none !important; border-bottom: 1px solid #ffffff !important; border-radius: 15px !important; padding: 8px 12px !important; order: 2 !important; }
+          .pe-sidebar .pe-join-code { padding: 6px !important; margin-bottom: 6px !important; }
+          .pe-sidebar .pe-join-code p[style*="font-size: 20px"] { font-size: 14px !important; letter-spacing: 3px !important; }
+          .pe-leaderboard-list { gap: 2px !important; }
+          .pe-main { padding: 12px !important; order: 1 !important; overflow-y: visible !important; }
+          .pe-scores-layout { flex-direction: column !important; }
+          .pe-coach { display: none !important; }
+          .pe-score-row { flex-wrap: nowrap !important; gap: 8px !important; }
+          .pe-score-input { width: 80px !important; min-width: 80px !important; font-size: 14px !important; }
+        }
+        @media (min-width: 769px) {
+          .pe-main { overflow-y: auto; }
         }
       `}</style>
     </motion.div>

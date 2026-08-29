@@ -349,7 +349,7 @@ export function ResultsScreen() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '8px', paddingBottom: '8px' }}>
+              <div className="rr-results-podium" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '8px', paddingBottom: '8px' }}>
                 {podiumOrder.map((player) => {
                   const isTied = podiumOrder.some(p => p.rank !== player.rank && p.score === player.score)
                   const height = podiumHeights[player.rank]
@@ -460,7 +460,7 @@ export function ResultsScreen() {
             {analytics && (
               <motion.div className="kippo-card" style={{ padding: '16px' }} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.72 }}>
                 <div className="kippo-label-bar" style={{ marginBottom: '12px' }}>GAME ANALYTICS</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
+                <div className="rr-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
                   {[
                     { value: analytics.numRounds, label: 'Rounds' },
                     { value: analytics.totalPoints, label: 'Total Points' },
@@ -561,7 +561,17 @@ export function ResultsScreen() {
       <ConfirmModal isOpen={showHistoryConfirm} onClose={() => setShowHistoryConfirm(false)} onConfirm={() => { setShowHistoryConfirm(false); navigate('/history') }} title="View Game History" message="Leave the podium to view your game history?" confirmText="View History" cancelText="Stay here" />
       <ConfirmModal isOpen={showRematchConfirm} onClose={() => setShowRematchConfirm(false)} onConfirm={handleRematch} title="Rematch?" message={`Start a new game with the same ${game?.players?.length || 0} players? Scores will be reset.`} confirmText="Let's go!" cancelText="Cancel" />
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @media (max-width: 480px) {
+          .rr-results-podium { gap: 4px !important; }
+          .rr-results-podium > div { max-width: 90px !important; }
+          .rr-results-podium p[style*="font-size: 13px"] { font-size: 11px !important; }
+          .rr-results-podium p[style*="font-size: 18px"] { font-size: 14px !important; }
+          .rr-analytics-grid { grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
+          .rr-analytics-grid > div { padding: 8px !important; }
+          .rr-analytics-grid p[style*="font-size: 22px"] { font-size: 18px !important; }
+        }
+      `}</style>
     </motion.div>
   )
 }

@@ -387,6 +387,11 @@ export function RajaRaniLobbyScreen() {
         @media (min-width: 601px) and (max-width: 900px) {
           .lobby-settings-grid { grid-template-columns: 1fr 1fr !important; }
         }
+        @media (max-width: 400px) {
+          .lobby-settings-grid { gap: 10px !important; }
+          .lobby-settings-grid > div { padding: 12px !important; }
+          .lobby-settings-grid span[style*="font-size: 36px"] { font-size: 28px !important; }
+        }
       `}</style>
     </motion.div>
   )

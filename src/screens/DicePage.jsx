@@ -14,7 +14,7 @@ const diceFaces = [
 function DiceFace({ value }) {
   const face = diceFaces[value - 1]
   return (
-    <svg viewBox="0 0 100 100" style={{ width: '160px', height: '160px' }}>
+    <svg className="dice-svg" viewBox="0 0 100 100" style={{ width: '160px', height: '160px' }}>
       <rect x="2" y="2" width="96" height="96" rx="8" fill="#ffffff" stroke="#ee1f66" strokeWidth="3" />
       {face.dots.map((dot, i) => (
         <circle key={i} cx={dot.x} cy={dot.y} r="9" fill="#000000" />
@@ -102,7 +102,7 @@ export function DicePage() {
 
           {currentValue && !rolling && (
             <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}>
-              <span style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '48px', fontWeight: 700, color: '#ee1f66', lineHeight: '1' }}>{currentValue}</span>
+              <span className="dice-score" style={{ fontFamily: "'Source Code Pro', monospace", fontSize: '48px', fontWeight: 700, color: '#ee1f66', lineHeight: '1' }}>{currentValue}</span>
             </motion.div>
           )}
         </div>
@@ -148,6 +148,13 @@ export function DicePage() {
           </div>
         )}
       </div>
+
+      <style>{`
+        @media (max-width: 400px) {
+          .dice-score { font-size: 36px !important; }
+          .dice-svg { width: 120px !important; height: 120px !important; }
+        }
+      `}</style>
     </motion.div>
   )
 }

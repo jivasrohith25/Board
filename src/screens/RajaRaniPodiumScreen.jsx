@@ -45,15 +45,23 @@ export function RajaRaniPodiumScreen() {
   }, [roomId, navigate])
 
   // Confetti + victory music on mount
+  const audioRef = useRef(null)
+  const [audioBlocked, setAudioBlocked] = useState(false)
+
   useEffect(() => {
     if (!room) return
 
-    // Victory music
+    // Victory music — try autoplay, fall back to user-tap prompt
     const audio = new Audio('/victory_music.mpeg')
     audio.loop = false
     audio.volume = 0.6
-    audio.play().catch(() => {})
+    audioRef.current = audio
+    audio.play().catch(() => {
+      // Autoplay blocked (mobile browser) — show tap-to-play prompt
+      setAudioBlocked(true)
+    })
 
+    // Confetti
     const duration = 3000
     const end = Date.now() + duration
     const frame = () => {
@@ -65,6 +73,13 @@ export function RajaRaniPodiumScreen() {
 
     return () => { audio.pause(); audio.currentTime = 0 }
   }, [room])
+
+  const playVictorySound = () => {
+    if (audioRef.current) {
+      audioRef.current.play().catch(() => {})
+      setAudioBlocked(false)
+    }
+  }
 
   if (loading || !room) {
     return (
@@ -111,11 +126,17 @@ export function RajaRaniPodiumScreen() {
     })
   })
 
+  // Responsive podium bar heights based on viewport
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 480
+  const podiumHeights = isMobile
+    ? { first: 120, second: 85, third: 70 }
+    : { first: 200, second: 150, third: 120 }
+
   // Podium bar configs: [2nd, 1st, 3rd] left-to-right
   const podiumBars = [
-    podiumPlayers[1] && { player: podiumPlayers[1], rank: 2, height: 150, bg: '#888888', label: '#2' },
-    podiumPlayers[0] && { player: podiumPlayers[0], rank: 1, height: 200, bg: '#ee1f66', label: '#1' },
-    podiumPlayers[2] && { player: podiumPlayers[2], rank: 3, height: 120, bg: '#cd7f32', label: '#3' },
+    podiumPlayers[1] && { player: podiumPlayers[1], rank: 2, height: podiumHeights.second, bg: '#888888', label: '#2' },
+    podiumPlayers[0] && { player: podiumPlayers[0], rank: 1, height: podiumHeights.first, bg: '#ee1f66', label: '#1' },
+    podiumPlayers[2] && { player: podiumPlayers[2], rank: 3, height: podiumHeights.third, bg: '#cd7f32', label: '#3' },
   ].filter(Boolean)
 
   return (
@@ -133,6 +154,7 @@ export function RajaRaniPodiumScreen() {
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="rr-winner-banner"
             style={{
               background: '#ee1f66',
               borderRadius: '15px',
@@ -190,12 +212,37 @@ export function RajaRaniPodiumScreen() {
           </motion.div>
         )}
 
+        {/* Tap to play victory sound — shown when autoplay blocked on mobile */}
+        {audioBlocked && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              display: 'flex', justifyContent: 'center', marginBottom: '12px',
+            }}
+          >
+            <button
+              onClick={playVictorySound}
+              style={{
+                fontFamily: FONT, fontSize: '11px', fontWeight: 700,
+                textTransform: 'uppercase', letterSpacing: '0.1em',
+                padding: '10px 20px', background: '#29292a',
+                color: '#ffffff', border: '1px solid #ee1f66',
+                borderRadius: '10px', cursor: 'pointer',
+              }}
+            >
+              🔊 TAP FOR VICTORY SOUND
+            </button>
+          </motion.div>
+        )}
+
         {/* Podium */}
         {podiumBars.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
+            className="rr-podium-card"
             style={{
               background: '#29292a',
               border: '1px solid #ffffff',
@@ -548,12 +595,16 @@ export function RajaRaniPodiumScreen() {
 
       <style>{`
         @media (max-width: 480px) {
-          .rr-podium-bar { width: 90px !important; }
-          .rr-podium-bar-first { width: 110px !important; }
-          .rr-podium-container { gap: 8px !important; padding: 0 4px !important; }
-          .rr-winner-name { font-size: 22px !important; }
-          .rr-winner-score { font-size: 26px !important; }
-          .rr-standings-card { padding: 20px !important; }
+          .rr-winner-banner { padding: 20px 16px !important; }
+          .rr-podium-card { padding: 16px 10px !important; }
+          .rr-podium-bar { width: 72px !important; min-width: 72px !important; padding: 8px 4px !important; gap: 3px !important; }
+          .rr-podium-bar-first { width: 90px !important; min-width: 90px !important; padding: 8px 4px !important; gap: 3px !important; }
+          .rr-podium-container { gap: 6px !important; padding: 0 2px !important; height: 160px !important; }
+          .rr-podium-container p[style*="font-size: 20px"] { font-size: 14px !important; }
+          .rr-podium-container p[style*="font-size: 13px"] { font-size: 10px !important; }
+          .rr-winner-name { font-size: 20px !important; }
+          .rr-winner-score { font-size: 22px !important; }
+          .rr-standings-card { padding: 16px !important; }
         }
       `}</style>
     </motion.div>

@@ -45,7 +45,7 @@ export function HistoryScreen() {
         <div className="kippo-label-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
           <span style={{ fontSize: '14px' }}>📜</span>
           GAME HISTORY
-          <span style={{ marginLeft: 'auto', fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 400, letterSpacing: 0, textTransform: 'none', opacity: 0.5 }}>
+          <span className="history-subtitle" style={{ marginLeft: 'auto', fontFamily: "'Source Code Pro', monospace", fontSize: '10px', fontWeight: 400, letterSpacing: 0, textTransform: 'none', opacity: 0.5 }}>
             Past wins, close calls, and receipts.
           </span>
         </div>
@@ -149,6 +149,12 @@ export function HistoryScreen() {
           </div>
         )}
       </div>
+
+      <style>{`
+        @media (max-width: 400px) {
+          .history-subtitle { display: none !important; }
+        }
+      `}</style>
     </motion.div>
   )
 }

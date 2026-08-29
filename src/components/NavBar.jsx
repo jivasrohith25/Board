@@ -16,7 +16,7 @@ export function NavBar() {
   return (
     <>
       <div className="kippo-nav">
-        <div style={{ display: 'flex', alignItems: 'center', width: '100%', maxWidth: '1200px', margin: '0 auto', gap: '4px' }}>
+        <div className="kippo-nav-inner" style={{ display: 'flex', alignItems: 'center', width: '100%', maxWidth: '1200px', margin: '0 auto', gap: '4px' }}>
           <div style={{ flex: 1 }} />
 
           {/* Nav Links */}
@@ -78,6 +78,13 @@ export function NavBar() {
         <span style={{ opacity: 0.5 }}>|</span>
         <span>KIPPO</span>
       </div>
+
+      <style>{`
+        @media (max-width: 400px) {
+          .kippo-nav-inner { gap: 0 !important; }
+          .kippo-nav-inner button { font-size: 10px !important; padding: 4px 6px !important; }
+        }
+      `}</style>
     </>
   )
 }

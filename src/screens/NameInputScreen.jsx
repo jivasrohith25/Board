@@ -296,6 +296,9 @@ export function NameInputScreen() {
       <style>{`@media (max-width: 768px) {
         .name-input-grid { grid-template-columns: 1fr !important; }
         .name-input-inner-grid { grid-template-columns: 1fr !important; }
+      }
+      @media (max-width: 400px) {
+        .name-input-grid { padding: 12px !important; }
       }`}</style>
     </motion.div>
   )

@@ -135,7 +135,7 @@ VITE_FIREBASE_APP_ID=...`}
           >
             🎲
           </motion.div>
-          <h1 style={{
+          <h1 className="login-title" style={{
             fontFamily: "'Source Code Pro', monospace",
             fontSize: '42px',
             fontWeight: 700,
@@ -308,6 +308,12 @@ VITE_FIREBASE_APP_ID=...`}
           </AnimatePresence>
         </div>
       </motion.div>
+
+      <style>{`
+        @media (max-width: 400px) {
+          .login-title { font-size: 32px !important; letter-spacing: 0.2em !important; }
+        }
+      `}</style>
     </div>
   )
 }

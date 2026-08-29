@@ -81,7 +81,7 @@ export function JoinGameScreen() {
               onChange={(e) => { setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)); setError(''); }}
               onKeyDown={(e) => { if (e.key === 'Enter') handleJoin() }}
               placeholder="ABCDEF"
-              className="kippo-input"
+              className="kippo-input join-code-input"
               style={{ width: '100%', textAlign: 'center', fontSize: '24px', fontWeight: 700, letterSpacing: '8px', padding: '15px', textTransform: 'uppercase' }}
               maxLength={6}
               autoFocus
@@ -128,6 +128,12 @@ export function JoinGameScreen() {
           </div>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 360px) {
+          .join-code-input { font-size: 20px !important; letter-spacing: 5px !important; }
+        }
+      `}</style>
     </motion.div>
   )
 }

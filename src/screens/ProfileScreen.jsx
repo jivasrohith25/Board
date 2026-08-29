@@ -116,7 +116,7 @@ export function ProfileScreen() {
         {/* Avatar Grid */}
         <div className="kippo-card" style={{ padding: 0, overflow: 'hidden', marginBottom: '15px' }}>
           <div className="kippo-label-bar">≡ PICK YOUR CHARACTER</div>
-          <div style={{ padding: '15px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+          <div className="profile-avatar-grid" style={{ padding: '15px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
             {AVATARS.map(avatarItem => {
               const isSelected = selected === avatarItem.id
               return (
@@ -193,6 +193,12 @@ export function ProfileScreen() {
             </div>
           </motion.div>
         )}
+
+      <style>{`
+        @media (max-width: 360px) {
+          .profile-avatar-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+        }
+      `}</style>
       </div>
     </motion.div>
   )

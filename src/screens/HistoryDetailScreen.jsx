@@ -62,6 +62,7 @@ export function HistoryDetailScreen() {
           <motion.div
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
+            className="hd-winner-banner"
             style={{
               background: '#ee1f66',
               borderRadius: '15px',
@@ -166,6 +167,14 @@ export function HistoryDetailScreen() {
           </motion.button>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 480px) {
+          .hd-winner-banner { padding: 20px 16px !important; }
+          .hd-winner-banner p[style*="font-size: 28px"] { font-size: 20px !important; }
+          .hd-winner-banner p[style*="font-size: 32px"] { font-size: 22px !important; }
+        }
+      `}</style>
     </motion.div>
   )
 }
